@@ -90,10 +90,10 @@ for suff = researchesValues.keys
                 intermediateFold = '/ST000000/';
             end
             folderPath = strcat(perfusionCTFolder, patient, intermediateFold, convertStringsToChars(subfold), '/');
-            %% get the information of the various map for a specific subfolder
-            [combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,penumbraImage,totalCoreMask,stats] = getInfoFromSubfold(subfold,PARAMETRIC_IMAGES_TO_ANALYZE,...
-                folderPath,patient,MANUAL_ANNOTATION_FOLDER,saveFolder,colorbarPointY,parametricMaps,colorbarPointBottomX,colorbarPointTopX,penumbra_color,core_color,flag_PENUMBRACORE, ...
-                combinedResearchCoreMaks,combinedResearchPenumbraMaks,stats);
+            
+            combinedResearchCoreMaks,combinedResearchPenumbraMaks,stats  = getInfoFromSubfold(subfold,PARAMETRIC_IMAGES_TO_ANALYZE,folderPath,patient,...
+                MANUAL_ANNOTATION_FOLDER,saveFolder,colorbarPointY,parametricMaps,colorbarPointBottomX,colorbarPointTopX,penumbra_color,core_color,flag_PENUMBRACORE, ...
+                combinedResearchCoreMaks,combinedResearchPenumbraMaks,stats)
         end
               
         

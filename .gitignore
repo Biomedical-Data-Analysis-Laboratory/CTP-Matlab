@@ -1,0 +1,24 @@
+*.scn
+*.xml
+*.IDEA
+*.DS_store
+*.dzi
+*.txt
+*.log
+*.cert
+*.key
+*.txt
+*.json
+*.old
+*.original
+*py
+*.ipynb
+
+
+
+## Folders
+dziFolder
+__pycache__
+.vscode
+logging
+.ipynb_checkpoints

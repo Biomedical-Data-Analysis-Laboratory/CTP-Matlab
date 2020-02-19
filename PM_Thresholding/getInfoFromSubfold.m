@@ -1,6 +1,8 @@
-function [combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,penumbraImage,totalCoreMask,stats] = getInfoFromSubfold(subfold,PARAMETRIC_IMAGES_TO_ANALYZE,folderPath,patient,...
-                MANUAL_ANNOTATION_FOLDER,saveFolder,colorbarPointY,parametricMaps,colorbarPointBottomX,colorbarPointTopX,penumbra_color,core_color,flag_PENUMBRACORE, ...
-                combinedResearchCoreMaks,combinedResearchPenumbraMaks,stats)
+function [combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks,penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats] = ...
+    getInfoFromSubfold(subfold,PARAMETRIC_IMAGES_TO_ANALYZE,research,folderPath,patient,MANUAL_ANNOTATION_FOLDER,saveFolder,colorbarPointY,parametricMaps,...
+    suffix,colorbarPointBottomX,colorbarPointTopX,penumbra_color,core_color,flag_PENUMBRACORE,SAVE_PAR_MAPS,count,perce, ...
+    combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks, ...
+    penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats)
 %UNTITLED Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -9,22 +11,6 @@ n = numel(dir(folderPath))-2;
 info = cell(1,n);
 images = cell(1,n);
 sec = zeros(n,2);
-
-%% initialize the cells if we are cecking the grayscale image 
-if strcmp(subfold, "SE000003")
-    tryImage = cell(1,n); % initialize the ground truth cell
-    groundTruthImage = cell(1,n); % initialize the ground truth cell
-    coreImage = cell(1,n); % initialize the core image cell
-    penumbraImage = cell(1,n); % initialize the penumbra image cell
-    %%
-    totalCoreMask = cell(1,n);
-    totalPenumbraMask = cell(1,n);
-    imageCBV = cell(1,n);
-    imageCBF = cell(1,n);
-    imageTTP = cell(1,n);
-    imageTMAX = cell(1,n);
-    %%
-end
 
 %% extract DICOM images and info
 if ~PARAMETRIC_IMAGES_TO_ANALYZE
@@ -71,12 +57,21 @@ else
     end
 end
 sortInfo = cell(size(info));
-sortImages = cell(size(images));
+
+pm_index = 1; % for SE000004 == Cerebral Blood Flow (CBF)
+if strcmp(subfold, "SE000005") % for SE000005 == Cerebral Blood Volume (CBV)
+    pm_index = 2;
+elseif strcmp(subfold, "SE000006") % for SE000006: TMax
+    pm_index = 3;
+elseif strcmp(subfold, "SE000007") % SE000007: Time to Peak (TTP)
+    pm_index = 4;
+end
+
 
 for x=1:size(sec,1)
     newInd = sec(x,2);
     sortInfo{x} = info{newInd};
-    sortImages{x} = images{newInd};
+    sortImages{pm_index,x} = images{newInd};
 
     % create the folder if it doesn't exits
     if ~ exist(strcat(saveFolder, patient),'dir')
@@ -93,18 +88,18 @@ for x=1:size(sec,1)
         name = strcat('0', name);
     end
 
-    if length(size(sortImages{x})) == 2
-        sortImages{x} = mat2gray(sortImages{x});
+    if length(size(sortImages{pm_index,x})) == 2
+        sortImages{pm_index,x} = mat2gray(sortImages{pm_index,x});
     end
 
     % save the parametric map
     if SAVE_PAR_MAPS
-        imwrite(sortImages{x}, strcat(saveFolder, patient, '/', subfold, '/', name, '.png'));
+        imwrite(sortImages{pm_index,x}, strcat(saveFolder, patient, '/', subfold, '/', name, '.png'));
     end
 
     if strcmp(subfold, "SE000003")
         %% extract the shape of the brain slice from the grayscale image
-        T = rgb2gray(sortImages{x});
+        T = rgb2gray(sortImages{pm_index,x});
         blackWhiteMask = imbinarize(T);
         blackWhiteMask(:,colorbarPointY:end) = 0; % remove F in the bottom right
 
@@ -121,6 +116,8 @@ for x=1:size(sec,1)
         tryImage{x} = cat(3, blackWhiteMask, blackWhiteMask, blackWhiteMask);
         coreImage{x} = cat(3, blackWhiteMask, blackWhiteMask, blackWhiteMask);
         penumbraImage{x} = cat(3, blackWhiteMask, blackWhiteMask, blackWhiteMask);
+        
+        skullMasks{1,x} = double(~blackWhiteMask);
 
     elseif strcmp(subfold, "SE000004") || strcmp(subfold, "SE000005") || strcmp(subfold, "SE000006") || strcmp(subfold, "SE000007")
 
@@ -128,20 +125,20 @@ for x=1:size(sec,1)
             mapName = parametricMaps{indexName};
 
             %% find the infarcted regions based on the folder and the values 
-            mask = false(size(sortImages{x},1), size(sortImages{x},2));
+            mask = false(size(sortImages{pm_index,x},1), size(sortImages{pm_index,x},2));
             percentage = 0;
             direction = "";
             isCore = 0;
             isPenumbra = 0;
 
             if strcmp(subfold, "SE000004") 
-                imageCBF{x} = uint8(sortImages{x});
+                imageCBF{x} = uint8(sortImages{pm_index,x});
                 imageCBF{x}(:,colorbarPointY:end, :) = 0; % remove colorbar 
 
 %                             add the CBF image in order to calculate later 
 %                             MTT = CBV/CBF;
                 if strcmp(mapName, 'MTT')
-                    MTTimages{x} = uint8(sortImages{x});
+                    MTTimages{x} = uint8(sortImages{pm_index,x});
                 end
 
                 % if we want the percentage of CBF
@@ -156,7 +153,7 @@ for x=1:size(sec,1)
                     end
                 end
             elseif strcmp(subfold, "SE000005") 
-                imageCBV{x} = uint8(sortImages{x});
+                imageCBV{x} = uint8(sortImages{pm_index,x});
 
                 if contains(mapName, 'MTT')
 
@@ -192,7 +189,7 @@ for x=1:size(sec,1)
                     end
                 end
             elseif strcmp(subfold, "SE000006") && contains(mapName, 'TMax')
-                imageTMAX{x} = uint8(sortImages{x});
+                imageTMAX{x} = uint8(sortImages{pm_index,x});
                 imageTMAX{x}(:,colorbarPointY:end, :) = 0; % remove colorbar 
 
                 valuesTMax = research.(mapName);
@@ -204,7 +201,7 @@ for x=1:size(sec,1)
                     isPenumbra = 1;
                 end
             elseif strcmp(subfold, "SE000007") && contains(mapName, 'TTP')
-                imageTTP{x} = uint8(sortImages{x});
+                imageTTP{x} = uint8(sortImages{pm_index,x});
                 imageTTP{x}(:,colorbarPointY:end, :) = 0; % remove colorbar 
 
                 valuesTTP = research.(mapName);
@@ -219,7 +216,7 @@ for x=1:size(sec,1)
 
             %% % the percentage get replaced!!!
             % change the percentage only if it's not state FIXED
-            if ~strcmp(research.(mapName)(4), "FIXED")
+            if ~strcmp(research.(mapName)(4), "FIXED") && perce>=0
                 percToAdd = str2double(research.(mapName)(4));
                 % add something if it's says so
                 if ~isnan(percToAdd)
@@ -233,22 +230,21 @@ for x=1:size(sec,1)
             end
 
             %% extracting the infarcted areas (penumbra & core)
-            startingColorPixelX = colorbarPointBottomX - ...
-                int16(((colorbarPointBottomX-colorbarPointTopX)/100)*percentage);
+            startingColorPixelX = colorbarPointBottomX - int16(((colorbarPointBottomX-colorbarPointTopX)/100)*percentage);
 
             if isCore
                 if percentage==0
-                    tryImage{x} = zeros(size(sortImages{x}));
-                    retMask = zeros(size(sortImages{x},1), size(sortImages{x},2));
+                    tryImage{x} = zeros(size(sortImages{pm_index,x}));
+                    retMask = zeros(size(sortImages{pm_index,x},1), size(sortImages{pm_index,x},2));
                 elseif percentage==100
-                    tryImage{x} = ones(size(sortImages{x}));
-                    retMask = ones(size(sortImages{x},1), size(sortImages{x},2));
+                    tryImage{x} = ones(size(sortImages{pm_index,x}));
+                    retMask = ones(size(sortImages{pm_index,x},1), size(sortImages{pm_index,x},2));
                 else
                     if ~contains(mapName, 'MTT')
-                        [tryImage{x}, retMask] = segmentWithKMeanClustering(sortImages{x}, direction, 100, colorbarPointBottomX, colorbarPointTopX, startingColorPixelX, colorbarPointY);
+                        [tryImage{x}, retMask] = segmentWithKMeanClustering(sortImages{pm_index,x}, direction, 100, colorbarPointBottomX, colorbarPointTopX, startingColorPixelX, colorbarPointY);
                     else
                         % just for the created MTT map 
-                        tryImage{x} = ones(size(sortImages{x}));
+                        tryImage{x} = ones(size(sortImages{pm_index,x}));
                         MTTimages{x}(:,colorbarPointY:end, :) = 0; % remove colorbar 
                         retMask = MTTimages{x};
                     end
@@ -263,17 +259,17 @@ for x=1:size(sec,1)
 
             elseif isPenumbra
                 if percentage==0
-                    tryImage{x} = zeros(size(sortImages{x}));
-                    retMask = zeros(size(sortImages{x},1), size(sortImages{x},2));
+                    tryImage{x} = zeros(size(sortImages{pm_index,x}));
+                    retMask = zeros(size(sortImages{pm_index,x},1), size(sortImages{pm_index,x},2));
                 elseif percentage==100
-                    tryImage{x} = ones(size(sortImages{x}));
-                    retMask = ones(size(sortImages{x},1), size(sortImages{x},2));
+                    tryImage{x} = ones(size(sortImages{pm_index,x}));
+                    retMask = ones(size(sortImages{pm_index,x},1), size(sortImages{pm_index,x},2));
                 else
                     if ~contains(mapName, 'MTT')
-                        [tryImage{x}, retMask] = segmentWithKMeanClustering(sortImages{x}, direction, 100, colorbarPointBottomX, colorbarPointTopX, startingColorPixelX, colorbarPointY);
+                        [tryImage{x}, retMask] = segmentWithKMeanClustering(sortImages{pm_index,x}, direction, 100, colorbarPointBottomX, colorbarPointTopX, startingColorPixelX, colorbarPointY);
                     else
                         % just for the created MTT map 
-                        tryImage{x} = ones(size(sortImages{x}));
+                        tryImage{x} = ones(size(sortImages{pm_index,x}));
                         MTTimages{x}(:,colorbarPointY:end, :) = 0; % remove colorbar 
                         retMask = MTTimages{x};
                     end
@@ -299,8 +295,8 @@ for x=1:size(sec,1)
                 strpercentage = num2str(perce);
             end
             new_suffix = strcat(suffix, "_perc_", strpercentage);
+            %% get the statistical information from the image
             stats = statisticalInfo(stats, new_suffix, totalPenumbraMask{x}, totalCoreMask{x}, MANUAL_ANNOTATION_FOLDER, patient, x, penumbra_color, core_color, flag_PENUMBRACORE);
-
 
 %                         %% call the method proposed by Rasmus to extract the various infarcted regions
 % %                         outRasmus = RasmusMethod(totalPenumbraMask{x}, totalCoreMask{x}, imageCBV{x}, imageCBF{x}, imageTTP{x}, imageTMAX{x});
@@ -335,6 +331,10 @@ for x=1:size(sec,1)
 % %                         end
         end
     end
+end
+
+if strcmp(subfold, "SE000007") % last folder
+    clusterImagesWithRealValues(totalPenumbraMask, totalCoreMask, skullMasks, sortImages, colorbarPointBottomX, colorbarPointTopX, colorbarPointY);
 end
 
 end

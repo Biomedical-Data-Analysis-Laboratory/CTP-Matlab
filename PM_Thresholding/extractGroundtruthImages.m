@@ -10,6 +10,10 @@ USER = strcat(USER, '2921329\');
 
 %% CONSTANTS
 PARAMETRIC_IMAGES_TO_ANALYZE = 1; % to read the proper images (parametric maps images (png) or DICOM files)
+SAVE_PAR_MAPS = 0; 
+% to run also the penumbra-core statistics
+flag_PENUMBRACORE = 1;
+DIFFERENT_PERCENTAGES = 0;
 HOME = strcat(USER, 'OneDrive - Universitetet i Stavanger/');
 perfusionCTFolder = strcat(HOME, 'PhD/Patients/');
 
@@ -22,10 +26,8 @@ end
 
 MANUAL_ANNOTATION_FOLDER = strcat(USER, 'OneDrive - Universitetet i Stavanger/Master_Thesis/CT_perfusion_markering_processed_2.0/COMBINED_GRAYAREA_2.0/');
 
-SAVE_PAR_MAPS = 0; 
 patients = ["PA02", "PA03", "PA04", "PA05", "PA06", "PA07", "PA08", "PA09", "PA10", "PA11"]; %["PA08"]; 
 
-%subfolds = ["SE000002"]; 
 % brain , CBF, CBV, TMax, TTP
 subfolds = ["SE000003", "SE000004", "SE000005", "SE000006", "SE000007"]; 
 
@@ -35,8 +37,7 @@ colorbarPointY = 436;
 penumbra_color = 76;
 core_color = 150;
 
-% to run also the penumbra-core statistics
-flag_PENUMBRACORE = 1;
+
 
 %% values for each parametric map [perc(%), up/down, core/penumbra]
 
@@ -67,8 +68,13 @@ for suff = researchesValues.keys
     parametricMaps = fieldnames(research);
     %% for each patient
     for p=1:numel(patients)
-
-        for perce=0:10:100
+        
+        percToLoop = 0:10:100;
+        if ~DIFFERENT_PERCENTAGES
+            percToLoop = -1;
+        end
+        
+        for perce=percToLoop
         tic
         savePenumbra = 1;
         saveCore = 1;
@@ -90,10 +96,32 @@ for suff = researchesValues.keys
                 intermediateFold = '/ST000000/';
             end
             folderPath = strcat(perfusionCTFolder, patient, intermediateFold, convertStringsToChars(subfold), '/');
+            n = numel(dir(folderPath))-2;
+            %% initialize the cells if we are cecking the grayscale image 
+            if strcmp(subfold, "SE000003")
+                tryImage = cell(1,n); % initialize the ground truth cell
+                groundTruthImage = cell(1,n); % initialize the ground truth cell
+                coreImage = cell(1,n); % initialize the core image cell
+                penumbraImage = cell(1,n); % initialize the penumbra image cell
+                %%
+                totalCoreMask = cell(1,n);
+                totalPenumbraMask = cell(1,n);
+                imageCBV = cell(1,n);
+                imageCBF = cell(1,n);
+                imageTTP = cell(1,n);
+                imageTMAX = cell(1,n);
+                %%
+                sortImages = cell(4,n); % 4 == number of parametric maps
+                skullMasks = cell(1,n);
+            end
+
             %% get the information of the various map for a specific subfolder
-            [combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,penumbraImage,totalCoreMask,stats] = getInfoFromSubfold(subfold,PARAMETRIC_IMAGES_TO_ANALYZE,...
-                folderPath,patient,MANUAL_ANNOTATION_FOLDER,saveFolder,colorbarPointY,parametricMaps,colorbarPointBottomX,colorbarPointTopX,penumbra_color,core_color,flag_PENUMBRACORE, ...
-                combinedResearchCoreMaks,combinedResearchPenumbraMaks,stats);
+            [combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks, ...
+                penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats] = getInfoFromSubfold(subfold,PARAMETRIC_IMAGES_TO_ANALYZE,research,...
+                folderPath,patient,MANUAL_ANNOTATION_FOLDER,saveFolder,colorbarPointY,parametricMaps,suffix,...
+                colorbarPointBottomX,colorbarPointTopX,penumbra_color,core_color,flag_PENUMBRACORE,SAVE_PAR_MAPS,count,perce, ...
+                combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks, ...
+                penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats);
         end
               
         

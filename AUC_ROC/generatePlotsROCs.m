@@ -5,8 +5,8 @@ close all;
 % USER = '/Users/lucatomasetti/';
 %% WINDOWS 
 USER = 'C:\Users\';
-% USER = strcat(USER, 'Luca\');
-USER = strcat(USER, '2921329\');
+USER = strcat(USER, 'Luca\');
+% USER = strcat(USER, '2921329\');
 
 %% CONSTANTS
 PARAMETRIC_IMAGES_TO_ANALYZE = 1; % to read the proper images (parametric maps images (png) or DICOM files)

@@ -26,7 +26,7 @@ end
 
 MANUAL_ANNOTATION_FOLDER = strcat(USER, 'OneDrive - Universitetet i Stavanger/Master_Thesis/CT_perfusion_markering_processed_2.0/COMBINED_GRAYAREA_2.0/');
 
-patients = ["PA02", "PA03", "PA04", "PA05", "PA06", "PA07", "PA08", "PA09", "PA10", "PA11"]; %["PA08"]; 
+patients = ["PA03"]; %["PA02","PA03","PA04", "PA05", "PA06", "PA07", "PA08", "PA09", "PA10", "PA11"]; %["PA08"]; 
 
 % brain , CBF, CBV, TMax, TTP
 subfolds = ["SE000003", "SE000004", "SE000005", "SE000006", "SE000007"]; 
@@ -111,8 +111,8 @@ for suff = researchesValues.keys
                 imageTTP = cell(1,n);
                 imageTMAX = cell(1,n);
                 %%
-                sortImages = cell(4,n); % 4 == number of parametric maps
-                skullMasks = cell(1,n);
+                sortImages = cell(5,n); % 5 == number of parametric maps + enhanced image
+                skullMasks = cell(5,n);
             end
 
             %% get the information of the various map for a specific subfolder

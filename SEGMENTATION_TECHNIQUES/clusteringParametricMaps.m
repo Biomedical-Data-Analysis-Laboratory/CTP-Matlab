@@ -18,7 +18,7 @@ function [lb,center] = clusteringParametricMaps(cbf,cbv,tmax,ttp,nImages)
 
             dist = sum((sqrt((array-seedvec).^2)),2);
 
-            distth = 0.25*max(dist);
+            distth = 0.8*max(dist);
             qualified = dist<distth;
 
             newcbf = array(:,1);
@@ -35,9 +35,10 @@ function [lb,center] = clusteringParametricMaps(cbf,cbv,tmax,ttp,nImages)
                 break;
             end
 
-            if (seed == newseed) | j>10
+            if (seed == newseed) | j>1000
                 j=0;
                 array(qualified,:) = [];
+                % find a center
                 center(i,:) = newseed;
                 %             center(2,i) = nnz(qualified);
                 break;
@@ -45,7 +46,7 @@ function [lb,center] = clusteringParametricMaps(cbf,cbv,tmax,ttp,nImages)
             seed = newseed;
         end
 
-        if isempty(array) || i>10
+        if isempty(array) || i>100
             i = 0;
             break;
         end
@@ -57,7 +58,7 @@ function [lb,center] = clusteringParametricMaps(cbf,cbv,tmax,ttp,nImages)
     
     while(true)
         newcenter = diff(centers);
-        intercluster = 0.15; %(max(cbv(:)/10));
+        intercluster = (max(cbv(:)/10));
         a = (newcenter<=intercluster);
         % center(a,:)=[];
         % centers = sqrt(sum((center.^2),2));

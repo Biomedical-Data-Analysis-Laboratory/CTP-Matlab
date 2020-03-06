@@ -65,6 +65,8 @@ elseif strcmp(subfold, "SE000006") % for SE000006: TMax
     pm_index = 3;
 elseif strcmp(subfold, "SE000007") % SE000007: Time to Peak (TTP)
     pm_index = 4;
+elseif strcmp(subfold, "SE000003") % SE000003: Enhanced image
+    pm_index = 5;
 end
 
 
@@ -117,7 +119,12 @@ for x=1:size(sec,1)
         coreImage{x} = cat(3, blackWhiteMask, blackWhiteMask, blackWhiteMask);
         penumbraImage{x} = cat(3, blackWhiteMask, blackWhiteMask, blackWhiteMask);
         
-        skullMasks{1,x} = double(~blackWhiteMask);
+        for t=1:4
+            skullMasks{t,x} = double(~blackWhiteMask);
+        end
+        
+        T(:,colorbarPointY:end) = 0; % remove F in the bottom right
+        skullMasks{5,x} = double(T); % add the enhanced image for classification
 
     elseif strcmp(subfold, "SE000004") || strcmp(subfold, "SE000005") || strcmp(subfold, "SE000006") || strcmp(subfold, "SE000007")
 
@@ -132,6 +139,9 @@ for x=1:size(sec,1)
             isPenumbra = 0;
 
             if strcmp(subfold, "SE000004") 
+                blackWhiteMask = imbinarize(rgb2gray(sortImages{pm_index,x}));
+                skullMasks{1,x} = blackWhiteMask .* skullMasks{1,x};
+                
                 imageCBF{x} = uint8(sortImages{pm_index,x});
                 imageCBF{x}(:,colorbarPointY:end, :) = 0; % remove colorbar 
 
@@ -153,6 +163,9 @@ for x=1:size(sec,1)
                     end
                 end
             elseif strcmp(subfold, "SE000005") 
+                blackWhiteMask = imbinarize(rgb2gray(sortImages{pm_index,x}));
+                skullMasks{2,x} = blackWhiteMask .* skullMasks{2,x};
+                
                 imageCBV{x} = uint8(sortImages{pm_index,x});
 
                 if contains(mapName, 'MTT')
@@ -188,29 +201,39 @@ for x=1:size(sec,1)
                         isPenumbra = 1;
                     end
                 end
-            elseif strcmp(subfold, "SE000006") && contains(mapName, 'TMax')
-                imageTMAX{x} = uint8(sortImages{pm_index,x});
-                imageTMAX{x}(:,colorbarPointY:end, :) = 0; % remove colorbar 
+            elseif strcmp(subfold, "SE000006") 
+                blackWhiteMask = imbinarize(rgb2gray(sortImages{pm_index,x}));
+                skullMasks{3,x} = blackWhiteMask .* skullMasks{3,x};
+                
+                if contains(mapName, 'TMax')
+                    imageTMAX{x} = uint8(sortImages{pm_index,x});
+                    imageTMAX{x}(:,colorbarPointY:end, :) = 0; % remove colorbar 
 
-                valuesTMax = research.(mapName);
-                percentage = str2double(valuesTMax(1));
-                direction = valuesTMax(2);
-                if strcmp(valuesTMax(3), "core")
-                    isCore = 1;
-                elseif strcmp(valuesTMax(3), "penumbra")
-                    isPenumbra = 1;
+                    valuesTMax = research.(mapName);
+                    percentage = str2double(valuesTMax(1));
+                    direction = valuesTMax(2);
+                    if strcmp(valuesTMax(3), "core")
+                        isCore = 1;
+                    elseif strcmp(valuesTMax(3), "penumbra")
+                        isPenumbra = 1;
+                    end
                 end
-            elseif strcmp(subfold, "SE000007") && contains(mapName, 'TTP')
-                imageTTP{x} = uint8(sortImages{pm_index,x});
-                imageTTP{x}(:,colorbarPointY:end, :) = 0; % remove colorbar 
+            elseif strcmp(subfold, "SE000007") 
+                blackWhiteMask = imbinarize(rgb2gray(sortImages{pm_index,x}));
+                skullMasks{4,x} = blackWhiteMask .* skullMasks{4,x};
+                
+                if contains(mapName, 'TTP')
+                    imageTTP{x} = uint8(sortImages{pm_index,x});
+                    imageTTP{x}(:,colorbarPointY:end, :) = 0; % remove colorbar 
 
-                valuesTTP = research.(mapName);
-                percentage = str2double(valuesTTP(1));
-                direction = valuesTTP(2);
-                if strcmp(valuesTTP(3), "core")
-                    isCore = 1;
-                elseif strcmp(valuesTTP(3), "penumbra")
-                    isPenumbra = 1;
+                    valuesTTP = research.(mapName);
+                    percentage = str2double(valuesTTP(1));
+                    direction = valuesTTP(2);
+                    if strcmp(valuesTTP(3), "core")
+                        isCore = 1;
+                    elseif strcmp(valuesTTP(3), "penumbra")
+                        isPenumbra = 1;
+                    end
                 end
             end
 
@@ -334,7 +357,9 @@ for x=1:size(sec,1)
 end
 
 if strcmp(subfold, "SE000007") % last folder
-    clusterImagesWithRealValues(totalPenumbraMask, totalCoreMask, skullMasks, sortImages, colorbarPointBottomX, colorbarPointTopX, colorbarPointY);
+    clusterImagesWithRealValues(totalPenumbraMask, totalCoreMask, ...
+    skullMasks, sortImages, colorbarPointBottomX, colorbarPointTopX, colorbarPointY, ...
+    MANUAL_ANNOTATION_FOLDER, patient, penumbra_color, core_color, saveFolder)
 end
 
 end

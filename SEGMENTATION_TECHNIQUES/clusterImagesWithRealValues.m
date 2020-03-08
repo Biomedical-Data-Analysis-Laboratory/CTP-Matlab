@@ -1,6 +1,6 @@
-function clusterImagesWithRealValues(maskPenumbra, maskCore, ...
-    skullMasks, sortImages, colorbarPointBottomX, colorbarPointTopX, colorbarPointY, ...
-    MANUAL_ANNOTATION_FOLDER, pIndex, penumbra_color, core_color, saveFolder)
+function [data,tableData,nImages] = clusterImagesWithRealValues(maskPenumbra, maskCore, ...
+    skullMasks, sortImages, colorbarPointBottomX, colorbarPointTopX, colorbarPointY, PREDICT_WITH_OTHER_MODElS, ...
+    MANUAL_ANNOTATION_FOLDER, pIndex, penumbra_color, core_color, saveFolder, suffix, statsClassific, MODELS)
 %CONVERTIMAGESTOGRAYSCALE Summary of this function goes hereI
 %   Detailed explanation goes here
 
@@ -61,32 +61,10 @@ for pm_idx = 1:size(sortImages,1) % from 1 to 5
     end
 end
 
-%% at this point, we have all the parametric maps with real values!
-% K-mean clustering based on the 4 values of the parametric maps of each
-% slide
-
-classificationApproach(realValueImages,skullMasks, ...
-    MANUAL_ANNOTATION_FOLDER, pIndex, penumbra_color, core_color, saveFolder)
-
-% cbf = []; cbv = []; tmax = []; ttp = [];
-% 
-% for index = 1:size(realValueImages,2)
-% 	cbf = [cbf, realValueImages{1,index} + ((skullMasks{1,index}==0)*-1)];
-%     cbv = [cbv, realValueImages{2,index} + ((skullMasks{1,index}==0)*-1)];
-%     tmax = [tmax, realValueImages{3,index} + ((skullMasks{1,index}==0)*-1)];
-%     ttp = [ttp, realValueImages{4,index} + ((skullMasks{1,index}==0)*-1)];
-%     
-% end
-% 
-% [lb,center] = clusteringParametricMaps(cbf,cbv,tmax,ttp, size(realValueImages,2));
-% disp(center);
-% %lb = lb .* skullMasks{1,index};
-% for lb_idx=1:size(lb,2)
-%     figure, imshow(lb{1,lb_idx},[]);
-%     newClusterParametricMaps{1,lb_idx} = lb{1,lb_idx};
-% end
-% 
-% disp("here");
+%% At this point, we have all the parametric maps with real values!
+% K-mean clustering based on the 4 values of the parametric maps of each slide
+[data,tableData,nImages] = classificationApproach(realValueImages,skullMasks, PREDICT_WITH_OTHER_MODElS, ...
+    MANUAL_ANNOTATION_FOLDER, pIndex, penumbra_color, core_color, saveFolder, suffix, statsClassific, MODELS);
 
 end
 

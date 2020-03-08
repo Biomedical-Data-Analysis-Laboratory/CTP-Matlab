@@ -1,12 +1,15 @@
 clear; % clear the workspace
 close all; % close all window images
 
+load("PM_totalinfor_workspace_cluster_p03");
+
+
 %% APPLE
 % USER = '/Users/lucatomasetti/';
 %% WINDOWS 
 USER = 'C:\Users\';
-% USER = strcat(USER, 'Luca\');
-USER = strcat(USER, '2921329\');
+USER = strcat(USER, 'Luca\');
+% USER = strcat(USER, '2921329\');
 
 %% CONSTANTS
 PARAMETRIC_IMAGES_TO_ANALYZE = 1; % to read the proper images (parametric maps images (png) or DICOM files)
@@ -29,15 +32,11 @@ end
 MANUAL_ANNOTATION_FOLDER = strcat(USER, 'OneDrive - Universitetet i Stavanger/Master_Thesis/CT_perfusion_markering_processed_2.0/COMBINED_GRAYAREA_2.0/');
 patient = 'PA03';
 
-
-%% starting at the end of getInfoFromSubFold.m
-% load("PM_totalinfor_workspace");
-% 
-% clusterImagesWithRealValues(totalPenumbraMask, totalCoreMask, skullMasks, sortImages, colorbarPointBottomX, colorbarPointTopX, colorbarPointY);
-
+statsClassific = table();
+suffix = 'superpixelstree';
 
 %% starting at the end of clusterImagesWithRealValues.m
-load("PM_totalinfor_workspace_cluster_p03");
+statsClassific = classificationApproach(realValueImages,skullMasks, ...
+    MANUAL_ANNOTATION_FOLDER, patient, penumbra_color, core_color, saveFolder, suffix, statsClassific);
 
-classificationApproach(realValueImages,skullMasks, ...
-    MANUAL_ANNOTATION_FOLDER, patient, penumbra_color, core_color, saveFolder)
+calculateStats(statsClassific,saveFolder,"teststats.mat")

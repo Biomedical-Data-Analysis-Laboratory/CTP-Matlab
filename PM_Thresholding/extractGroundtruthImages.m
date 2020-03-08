@@ -5,8 +5,8 @@ close all;
 % USER = '/Users/lucatomasetti/';
 %% WINDOWS 
 USER = 'C:\Users\';
-% USER = strcat(USER, 'Luca\');
-USER = strcat(USER, '2921329\');
+USER = strcat(USER, 'Luca\');
+% USER = strcat(USER, '2921329\');
 
 %% CONSTANTS
 PARAMETRIC_IMAGES_TO_ANALYZE = 1; % to read the proper images (parametric maps images (png) or DICOM files)
@@ -26,11 +26,17 @@ end
 
 MANUAL_ANNOTATION_FOLDER = strcat(USER, 'OneDrive - Universitetet i Stavanger/Master_Thesis/CT_perfusion_markering_processed_2.0/COMBINED_GRAYAREA_2.0/');
 
-patients = ["PA03"]; %["PA02","PA03","PA04", "PA05", "PA06", "PA07", "PA08", "PA09", "PA10", "PA11"]; %["PA08"]; 
-
+patients = ["PA02","PA03","PA04", "PA05", "PA06", "PA07", "PA08", "PA09", "PA10", "PA11"]; 
 % brain , CBF, CBV, TMax, TTP
 subfolds = ["SE000003", "SE000004", "SE000005", "SE000006", "SE000007"]; 
 
+% flag for the leave-one-out prediction (predict with other models!)
+totalTableData = table(); 
+totalData = cell(1,numel(patients));
+totalNImages = cell(1,numel(patients));
+PREDICT_WITH_OTHER_MODElS = 1;
+
+%% colors index
 colorbarPointTopX = 129;
 colorbarPointBottomX = 384;
 colorbarPointY = 436;
@@ -38,10 +44,11 @@ penumbra_color = 76;
 core_color = 150;
 
 
-
 %% values for each parametric map [perc(%), up/down, core/penumbra]
 
 researchesValues = containers.Map;
+researchesValues('superpixelstree') = struct('cluster',"yes"); % no need of thresholding values!
+
 % researchesValues('Cereda_2015') = struct('CBF', [38, "down", "core", ""], 'TMax', [33, "up", "penumbra", ""]);
 % researchesValues('Wintermark_2006') = struct('CBV', [33, "down", "core", ""]); %, 'MTT', [6, "up", "penumbra"]);
 % researchesValues('Ma_Cambell_2019') = struct('CBF', [30, "down", "core", ""], 'TMax', [50, "up", "penumbra", ""]);
@@ -50,7 +57,7 @@ researchesValues = containers.Map;
 % researchesValues('Shaefer_2014') = struct('CBF', [15, "down", "core", ""], 'CBV', [30, "down", "core", ""]);
 % % 
 % % % researchesValues('Bivard_2014') = struct('CBF', [50, "down", "core"], 'TTP', [75, "up", "penumbra"]);
-researchesValues('Cambell_2012') = struct('CBF', [31, "down", "core", 10], 'TTP', [20, "up", "core", ""], 'TMax', [50, "up", "penumbra", ""]);
+% researchesValues('Cambell_2012') = struct('CBF', [31, "down", "core", 10], 'TTP', [20, "up", "core", ""], 'TMax', [50, "up", "penumbra", ""]);
 % researchesValues('Murphy_2006') = struct('CBF', [13.3, "down", "core", ""], 'CBV', [18.6, "down", "core", 5], 'CBF_2', [25, "down", "penumbra", ""], 'CBV_2', [36, "down", "penumbra", 10]);
 % % % researchesValues('Shaefer_2006') = struct('CBF', [17.92, "down", "penumbra"], 'CBV', [24.5, "down", "core"]);
 % % % researchesValues('Shaefer_2006_2') = struct('CBF', [8.8, "down", "core"], 'CBV', [49, "down", "penumbra"]);
@@ -59,6 +66,9 @@ researchesValues('Cambell_2012') = struct('CBF', [31, "down", "core", 10], 'TTP'
 
 
 stats = table();
+statsClassific = table();
+
+MODELS = cell(1,numel(patients));
 %% for each suffix 
 for suff = researchesValues.keys
     count = 0;
@@ -66,9 +76,10 @@ for suff = researchesValues.keys
     suffix = suff{1};
     research = researchesValues(suffix);
     parametricMaps = fieldnames(research);
+    
+    
     %% for each patient
     for p=1:numel(patients)
-        
         percToLoop = 0:10:100;
         if ~DIFFERENT_PERCENTAGES
             percToLoop = -1;
@@ -117,13 +128,20 @@ for suff = researchesValues.keys
 
             %% get the information of the various map for a specific subfolder
             [combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks, ...
-                penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats] = getInfoFromSubfold(subfold,PARAMETRIC_IMAGES_TO_ANALYZE,research,...
-                folderPath,patient,MANUAL_ANNOTATION_FOLDER,saveFolder,colorbarPointY,parametricMaps,suffix,...
+                penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats,data,tableData,nImages] = ...
+                getInfoFromSubfold(subfold,PARAMETRIC_IMAGES_TO_ANALYZE,research,folderPath,patient,PREDICT_WITH_OTHER_MODElS,... 
+                MANUAL_ANNOTATION_FOLDER,saveFolder,colorbarPointY,parametricMaps,suffix,...
                 colorbarPointBottomX,colorbarPointTopX,penumbra_color,core_color,flag_PENUMBRACORE,SAVE_PAR_MAPS,count,perce, ...
                 combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks, ...
-                penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats);
+                penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats,statsClassific,MODELS);
+        
+            if strcmp(subfold, "SE000007")
+                % concatenate the data information in a table
+                totalTableData = [totalTableData; tableData];
+                totalData{1,p} = data;
+                totalNImages{1,p} = nImages;
+            end
         end
-              
         
         toc
         %% Save the ground truth images
@@ -243,92 +261,44 @@ for suff = researchesValues.keys
         end
     end
     
-    
-    
-    
+    if isfield(research, "cluster") && strcmp(research.cluster, "yes")
+        %% for each patient
+        for p=1:numel(patients)
+            
+            patient = convertStringsToChars(patients(p));
+            pIndex = patient(end-1:end);
+            if ~ exist(strcat(saveFolder, patient, '/CLUSTER_OTHER_PATIENTS'),'dir')
+                mkdir(strcat(saveFolder, patient, '/CLUSTER_OTHER_PATIENTS'));
+            end
+            
+            currentTableIndex = (totalTableData.patient ~= str2double(pIndex));
+            currentTable = totalTableData(currentTableIndex,:);
+            %% train the model 
+            t = templateTree('MaxNumSplits',150);
+            Mdl = fitcensemble(currentTable,"output", "Method","AdaBoostM2", "Learner",t, 'Weights', "weights");
+            MODELS{1,str2double(pIndex)} = Mdl; %add the Mdl to MODELS for predictions without ground truth
+            
+            new_suffix = strcat(suffix, "_", pIndex);
+            
+            [predictions,statsClassific] = predictFromModel(Mdl,totalData{1,str2double(p)},totalNImages{1,str2double(p)}, ...
+                MANUAL_ANNOTATION_FOLDER,pIndex,penumbra_color,core_color, ...
+                statsClassific,new_suffix,patient,saveFolder, '/CLUSTER_OTHER_PATIENTS/');
+            
+            % display MEAN SQUARE ERROR (MSE)
+            disp("MSE:");
+            disp(immse(output(:), predictions));
+        end
+    end
 end
 
-stats.Properties.VariableNames = {'name' ...
-    'tn_p' 'fn_p' 'fp_p' 'tp_p' ...
-    'tn_c' 'fn_c' 'fp_c' 'tp_c' ...
-    'tn_pc' 'fn_pc' 'fp_pc' 'tp_pc' ...
-    'tn_p_nb' 'fn_p_nb' 'fp_p_nb' 'tp_p_nb' ...
-    'tn_c_nb' 'fn_c_nb' 'fp_c_nb' 'tp_c_nb' ...
-    'tn_pc_nb' 'fn_pc_nb' 'fp_pc_nb' 'tp_pc_nb'};
 
-G = findgroups(stats.name);
-names = unique(stats.name);
+%% save the statistic information (both for the classification approach and the thresholding approach
+calculateStats(statsClassific,saveFolder,"statsClassific.mat");
+% calculateStats(stats,saveFolder,"Cambell_AUC10_allstats.mat");
 
-splits = splitapply(@sum, [...
-    stats.tn_p, stats.fn_p, stats.fp_p, stats.tp_p, ...
-    stats.tn_c, stats.fn_c, stats.fp_c, stats.tp_c, ...
-    stats.tn_pc, stats.fn_pc, stats.fp_pc, stats.tp_pc, ...
-    stats.tn_p_nb, stats.fn_p_nb, stats.fp_p_nb, stats.tp_p_nb, ...
-    stats.tn_c_nb, stats.fn_c_nb, stats.fp_c_nb, stats.tp_c_nb, ...
-    stats.tn_pc_nb, stats.fn_pc_nb, stats.fp_pc_nb, stats.tp_pc_nb], G);
-
-stats = table(splits);
-stats = splitvars(stats);
-stats.Properties.VariableNames = {...
-    'tn_p' 'fn_p' 'fp_p' 'tp_p' ...
-    'tn_c' 'fn_c' 'fp_c' 'tp_c' ...
-    'tn_pc' 'fn_pc' 'fp_pc' 'tp_pc' ...
-    'tn_p_nb' 'fn_p_nb' 'fp_p_nb' 'tp_p_nb' ...
-    'tn_c_nb' 'fn_c_nb' 'fp_c_nb' 'tp_c_nb' ...
-    'tn_pc_nb' 'fn_pc_nb' 'fp_pc_nb' 'tp_pc_nb'};
-
-stats.name = names; 
-% chang the perc_100 name and order the rows
-% stats.name = replace(stats.name, "_perc_100", "_perc_99");
-stats = sortrows(stats,'name','ascend');
-stats = movevars(stats, 'name', 'Before', 'tn_p');
-
-stats.accuracy_p = (stats.tn_p + stats.tp_p +1e-07)./(stats.tn_p + stats.fn_p + stats.fp_p + stats.tp_p +1e-07);
-stats.accuracy_c = (stats.tn_c + stats.tp_c +1e-07)./(stats.tn_c + stats.fn_c + stats.fp_c + stats.tp_c +1e-07);
-stats.accuracy_pc = (stats.tn_pc + stats.tp_pc +1e-07)./(stats.tn_pc + stats.fn_pc + stats.fp_pc + stats.tp_pc +1e-07);
-stats.accuracy_p_nb = (stats.tn_p_nb + stats.tp_p_nb +1e-07)./(stats.tn_p_nb + stats.fn_p_nb + stats.fp_p_nb + stats.tp_p_nb +1e-07);
-stats.accuracy_c_nb = (stats.tn_c_nb + stats.tp_c_nb +1e-07)./(stats.tn_c_nb + stats.fn_c_nb + stats.fp_c_nb + stats.tp_c_nb +1e-07);
-stats.accuracy_pc_nb = (stats.tn_pc_nb + stats.tp_pc_nb +1e-07)./(stats.tn_pc_nb + stats.fn_pc_nb + stats.fp_pc_nb + stats.tp_pc_nb +1e-07);
-
-stats.precision_p = (stats.tp_p+1e-07)./(stats.fp_p + stats.tp_p+1e-07);
-stats.precision_c = (stats.tp_c+1e-07)./(stats.fp_c + stats.tp_c+1e-07);
-stats.precision_pc = (stats.tp_pc+1e-07)./(stats.fp_pc + stats.tp_pc+1e-07);
-stats.precision_p_nb = (stats.tp_p_nb+1e-07)./(stats.fp_p_nb + stats.tp_p_nb+1e-07);
-stats.precision_c_nb = (stats.tp_c_nb+1e-07)./(stats.fp_c_nb + stats.tp_c_nb+1e-07);
-stats.precision_pc_nb = (stats.tp_pc_nb+1e-07)./(stats.fp_pc_nb + stats.tp_pc_nb+1e-07);
-
-stats.specificity_p = (stats.tn_p+1e-07)./(stats.fp_p + stats.tn_p+1e-07);
-stats.specificity_c = (stats.tn_c+1e-07)./(stats.fp_c + stats.tn_c+1e-07);
-stats.specificity_pc = (stats.tn_pc+1e-07)./(stats.fp_pc + stats.tn_pc+1e-07);
-stats.specificity_p_nb = (stats.tn_p_nb+1e-07)./(stats.fp_p_nb + stats.tn_p_nb+1e-07);
-stats.specificity_c_nb = (stats.tn_c_nb+1e-07)./(stats.fp_c_nb + stats.tn_c_nb+1e-07);
-stats.specificity_pc_nb = (stats.tn_pc_nb+1e-07)./(stats.fp_pc_nb + stats.tn_pc_nb+1e-07);
-
-stats.sensitivity_p = (stats.tp_p+1e-07)./(stats.fn_p + stats.tp_p+1e-07);
-stats.sensitivity_c = (stats.tp_c+1e-07)./(stats.fn_c + stats.tp_c+1e-07);
-stats.sensitivity_pc = (stats.tp_pc+1e-07)./(stats.fn_pc + stats.tp_pc+1e-07);
-stats.sensitivity_p_nb = (stats.tp_p_nb+1e-07)./(stats.fn_p_nb + stats.tp_p_nb+1e-07);
-stats.sensitivity_c_nb = (stats.tp_c_nb+1e-07)./(stats.fn_c_nb + stats.tp_c_nb+1e-07);
-stats.sensitivity_pc_nb = (stats.tp_pc_nb+1e-07)./(stats.fn_pc_nb + stats.tp_pc_nb+1e-07);
-
-stats.f1_p = (2.*(stats.precision_p .* stats.sensitivity_p) +1e-07)./(stats.precision_p + stats.sensitivity_p+1e-07);
-stats.f1_c = (2.*(stats.precision_c .* stats.sensitivity_c) +1e-07)./(stats.precision_c + stats.sensitivity_c+1e-07);
-stats.f1_pc = (2.*(stats.precision_pc .* stats.sensitivity_pc) +1e-07)./(stats.precision_pc + stats.sensitivity_pc+1e-07);
-stats.f1_p_nb = (2.*(stats.precision_p_nb .* stats.sensitivity_p_nb) +1e-07)./(stats.precision_p_nb + stats.sensitivity_p_nb+1e-07);
-stats.f1_c_nb = (2.*(stats.precision_c_nb .* stats.sensitivity_c_nb) +1e-07)./(stats.precision_c_nb + stats.sensitivity_c_nb+1e-07);
-stats.f1_pc_nb = (2.*(stats.precision_pc_nb .* stats.sensitivity_pc_nb) +1e-07)./(stats.precision_pc_nb + stats.sensitivity_pc_nb+1e-07);
-
-stats.jaccard_p = (stats.f1_p+1e-07)./(2-stats.f1_p+1e-07);
-stats.jaccard_c = (stats.f1_c+1e-07)./(2-stats.f1_c+1e-07);
-stats.jaccard_pc = (stats.f1_pc+1e-07)./(2-stats.f1_pc+1e-07);
-stats.jaccard_p_nb = (stats.f1_p_nb+1e-07)./(2-stats.f1_p_nb+1e-07);
-stats.jaccard_c_nb = (stats.f1_c_nb+1e-07)./(2-stats.f1_c_nb+1e-07);
-stats.jaccard_pc_nb = (stats.f1_pc_nb+1e-07)./(2-stats.f1_pc_nb+1e-07);
-
-
-
-save(strcat(saveFolder, "Cambell_AUC10_allstats.mat"));
-
+if ~PREDICT_WITH_OTHER_MODElS
+    save(strcat(saveFolder,"MODELS.mat"), 'MODELS', '-v7.3');
+end
 
 
 

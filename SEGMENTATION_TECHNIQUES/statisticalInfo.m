@@ -1,4 +1,5 @@
-function [stats] = statisticalInfo(stats, suffix, penumbraMask, coreMask, MANUAL_ANNOTATION_FOLDER, patient, indexImg, penumbra_color, core_color, flag_PENUMBRACORE)
+function [stats] = statisticalInfo(stats, suffix, penumbraMask, coreMask, ...
+    MANUAL_ANNOTATION_FOLDER, patient, indexImg, penumbra_color, core_color, flag_PENUMBRACORE)
 %STATISTICALINFO Summary of this function goes here
 %   Detailed explanation goes here
 

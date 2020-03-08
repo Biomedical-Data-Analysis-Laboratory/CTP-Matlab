@@ -1,8 +1,9 @@
-function [combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks,penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats] = ...
-    getInfoFromSubfold(subfold,PARAMETRIC_IMAGES_TO_ANALYZE,research,folderPath,patient,MANUAL_ANNOTATION_FOLDER,saveFolder,colorbarPointY,parametricMaps,...
+function [combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks,penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats,data,tableData,nImages] = ...
+    getInfoFromSubfold(subfold,PARAMETRIC_IMAGES_TO_ANALYZE,research,folderPath,patient,PREDICT_WITH_OTHER_MODElS,...
+    MANUAL_ANNOTATION_FOLDER,saveFolder,colorbarPointY,parametricMaps,...
     suffix,colorbarPointBottomX,colorbarPointTopX,penumbra_color,core_color,flag_PENUMBRACORE,SAVE_PAR_MAPS,count,perce, ...
     combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks, ...
-    penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats)
+    penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats,statsClassific,MODELS)
 %UNTITLED Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -11,6 +12,11 @@ n = numel(dir(folderPath))-2;
 info = cell(1,n);
 images = cell(1,n);
 sec = zeros(n,2);
+
+%empty initialization
+data = [];
+tableData = [];
+nImages = [];
 
 %% extract DICOM images and info
 if ~PARAMETRIC_IMAGES_TO_ANALYZE
@@ -69,7 +75,6 @@ elseif strcmp(subfold, "SE000003") % SE000003: Enhanced image
     pm_index = 5;
 end
 
-
 for x=1:size(sec,1)
     newInd = sec(x,2);
     sortInfo{x} = info{newInd};
@@ -79,12 +84,13 @@ for x=1:size(sec,1)
     if ~ exist(strcat(saveFolder, patient),'dir')
         mkdir(strcat(saveFolder, patient));
     end
+    
     % create the folder if it doesn't exits
     if ~ exist(strcat(saveFolder, patient, '/', subfold),'dir')
         mkdir(strcat(saveFolder, patient, '/', subfold));
     end
 
-    % save the image
+    %% save the image
     name = num2str(x);
     if length(name) == 1
         name = strcat('0', name);
@@ -94,7 +100,7 @@ for x=1:size(sec,1)
         sortImages{pm_index,x} = mat2gray(sortImages{pm_index,x});
     end
 
-    % save the parametric map
+    %% save the parametric map
     if SAVE_PAR_MAPS
         imwrite(sortImages{pm_index,x}, strcat(saveFolder, patient, '/', subfold, '/', name, '.png'));
     end
@@ -145,8 +151,8 @@ for x=1:size(sec,1)
                 imageCBF{x} = uint8(sortImages{pm_index,x});
                 imageCBF{x}(:,colorbarPointY:end, :) = 0; % remove colorbar 
 
-%                             add the CBF image in order to calculate later 
-%                             MTT = CBV/CBF;
+                % add the CBF image in order to calculate later 
+                % MTT = CBV/CBF;
                 if strcmp(mapName, 'MTT')
                     MTTimages{x} = uint8(sortImages{pm_index,x});
                 end
@@ -239,16 +245,18 @@ for x=1:size(sec,1)
 
             %% % the percentage get replaced!!!
             % change the percentage only if it's not state FIXED
-            if ~strcmp(research.(mapName)(4), "FIXED") && perce>=0
-                percToAdd = str2double(research.(mapName)(4));
-                % add something if it's says so
-                if ~isnan(percToAdd)
-                    percentage = perce+percToAdd;
-                    if percentage>100
-                        percentage=100;
+            if numel(research.(mapName)) >= 4
+                if ~strcmp(research.(mapName)(4), "FIXED") && perce>=0
+                    percToAdd = str2double(research.(mapName)(4));
+                    % add something if it's says so
+                    if ~isnan(percToAdd)
+                        percentage = perce+percToAdd;
+                        if percentage>100
+                            percentage=100;
+                        end
+                    else
+                        percentage = perce;
                     end
-                else
-                    percentage = perce;
                 end
             end
 
@@ -356,10 +364,12 @@ for x=1:size(sec,1)
     end
 end
 
-if strcmp(subfold, "SE000007") % last folder
-    clusterImagesWithRealValues(totalPenumbraMask, totalCoreMask, ...
-    skullMasks, sortImages, colorbarPointBottomX, colorbarPointTopX, colorbarPointY, ...
-    MANUAL_ANNOTATION_FOLDER, patient, penumbra_color, core_color, saveFolder)
+if strcmp(subfold, "SE000007") && strcmp("cluster", mapName) % last folder
+    if strcmp(research.(mapName), "yes")
+        [data,tableData,nImages] = clusterImagesWithRealValues(totalPenumbraMask, totalCoreMask, ...
+        skullMasks, sortImages, colorbarPointBottomX, colorbarPointTopX, colorbarPointY, PREDICT_WITH_OTHER_MODElS, ...
+        MANUAL_ANNOTATION_FOLDER, patient, penumbra_color, core_color, saveFolder, suffix, statsClassific, MODELS);
+    end
 end
 
 end

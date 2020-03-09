@@ -47,7 +47,7 @@ core_color = 150;
 %% values for each parametric map [perc(%), up/down, core/penumbra]
 
 researchesValues = containers.Map;
-researchesValues('superpixelstree') = struct('cluster',"yes"); % no need of thresholding values!
+researchesValues('superpixelsbayes') = struct('cluster',"yes"); % no need of thresholding values!
 
 % researchesValues('Cereda_2015') = struct('CBF', [38, "down", "core", ""], 'TMax', [33, "up", "penumbra", ""]);
 % researchesValues('Wintermark_2006') = struct('CBV', [33, "down", "core", ""]); %, 'MTT', [6, "up", "penumbra"]);
@@ -77,7 +77,7 @@ for suff = researchesValues.keys
     research = researchesValues(suffix);
     parametricMaps = fieldnames(research);
     
-    
+        
     %% for each patient
     for p=1:numel(patients)
         percToLoop = 0:10:100;
@@ -260,7 +260,7 @@ for suff = researchesValues.keys
         
         end
     end
-    
+      
     if isfield(research, "cluster") && strcmp(research.cluster, "yes")
         %% for each patient
         for p=1:numel(patients)
@@ -273,32 +273,90 @@ for suff = researchesValues.keys
             
             currentTableIndex = (totalTableData.patient ~= str2double(pIndex));
             currentTable = totalTableData(currentTableIndex,:);
+            
+            %% reduce the table
+%             uniqueRowsTable = unique(currentTable(:,2:end));
+            uniqueRowsTable = currentTable(:,2:end);
+            
+%             uniqueWithoutOutput = unique(uniqueRowsTable(:,1:end-2));
+% 
+%             for row_idx = 1:size(uniqueWithoutOutput,1)
+%                 rows = (uniqueRowsTable.cbf==uniqueWithoutOutput.cbf(row_idx) & ...
+%                     uniqueRowsTable.cbv==uniqueWithoutOutput.cbv(row_idx) & ...
+%                     uniqueRowsTable.tmax==uniqueWithoutOutput.tmax(row_idx) & ...
+%                     uniqueRowsTable.ttp==uniqueWithoutOutput.ttp(row_idx) & ...
+%                     uniqueRowsTable.oldInfarction==uniqueWithoutOutput.oldInfarction(row_idx));
+%                 
+%                 if sum(rows) > 1 
+%                     tabToCheck = uniqueRowsTable(rows,:);
+%                     indexRows = find(rows);
+%                     countRows = [];
+%                     for rr_idx = 1:size(tabToCheck,1)
+%                         realRows = (currentTable.cbf==tabToCheck.cbf(rr_idx) & ...
+%                         currentTable.cbv==tabToCheck.cbv(rr_idx) & ...
+%                         currentTable.tmax==tabToCheck.tmax(rr_idx) & ...
+%                         currentTable.ttp==tabToCheck.ttp(rr_idx) & ...
+%                         currentTable.oldInfarction==tabToCheck.oldInfarction(rr_idx) & ...
+%                         currentTable.weights==tabToCheck.weights(rr_idx) & ...
+%                         currentTable.output==tabToCheck.output(rr_idx));
+%                     
+%                         countRows = [countRows; sum(realRows)];
+%                     end
+%                     
+%                     [~,I] = max(countRows);
+%                     rows(indexRows(I)) = 0; % don't count the row with highest values
+%                     uniqueRowsTable(rows,:) = []; % delete all the other rows
+%                 end
+%             end
+
             %% train the model 
-            t = templateTree('MaxNumSplits',150);
-            Mdl = fitcensemble(currentTable,"output", "Method","AdaBoostM2", "Learner",t, 'Weights', "weights");
-            MODELS{1,str2double(pIndex)} = Mdl; %add the Mdl to MODELS for predictions without ground truth
+            options = statset('UseParallel',false);
+            %%KNN
+%             t = templateKNN('NumNeighbors',1,'Standardize',1, ...
+%                 'Distance','jaccard','DistanceWeight','squaredinverse','IncludeTies',false); 
+%             Mdl = fitcensemble(uniqueRowsTable,"output", "Method","Subspace", "Learner",t,'Weights',"weights");
+            %%tree
+%             t = templateTree('MaxNumSplits',1500); 
+%             Mdl = fitcensemble(currentTable,"output", "Method","AdaBoostM2", "Learner",t, ...
+%                 'Weights', "weights");
+            
+%             t = templateSVM('Standardize',true,'KernelFunction','gaussian');
+            t = templateNaiveBayes('DistributionNames','kernel');
+%             t = templateDiscriminant();
+%             t = templateTree('MaxNumSplits',1500,'AlgorithmForCategorical','Exact'); 
+            Mdl = fitcecoc(uniqueRowsTable,"output",'Learners',t,'Weights', "weights",...
+                'Coding','onevsall','Options',options,'Verbose',1);
+
+            %% template and model for optimize hyperparameters
+%             t = templateTree('AlgorithmForCategorical','OVAbyClass','SplitCriterion','deviance',...
+%                 'MinLeafSize',1,'MaxNumSplits',150); 
+%             Mdl = fitcensemble(uniqueRowsTable,"output", "Method","AdaBoostM2", "Learner",t, 'Weights', "weights",...
+%                 'OptimizeHyperparameters',{'NumLearningCycles','LearnRate','MaxNumSplits'});
+
+            MODELS{1,p} = Mdl; % add the Mdl to MODELS for predictions without ground truth
             
             new_suffix = strcat(suffix, "_", pIndex);
             
-            [predictions,statsClassific] = predictFromModel(Mdl,totalData{1,str2double(p)},totalNImages{1,str2double(p)}, ...
+            tic
+            [predictions,statsClassific] = predictFromModel(Mdl,totalData{1,p},totalNImages{1,p}, ...
                 MANUAL_ANNOTATION_FOLDER,pIndex,penumbra_color,core_color, ...
                 statsClassific,new_suffix,patient,saveFolder, '/CLUSTER_OTHER_PATIENTS/');
-            
-            % display MEAN SQUARE ERROR (MSE)
-            disp("MSE:");
-            disp(immse(output(:), predictions));
+            toc
+%            % display MEAN SQUARE ERROR (MSE)
+%             disp("MSE:");
+%             disp(immse(output(:), predictions));
         end
     end
 end
 
 
 %% save the statistic information (both for the classification approach and the thresholding approach
-calculateStats(statsClassific,saveFolder,"statsClassific.mat");
+calculateStats(statsClassific,saveFolder,"statsClassific_bayes.mat");
 % calculateStats(stats,saveFolder,"Cambell_AUC10_allstats.mat");
 
-if ~PREDICT_WITH_OTHER_MODElS
-    save(strcat(saveFolder,"MODELS.mat"), 'MODELS', '-v7.3');
-end
+% if ~PREDICT_WITH_OTHER_MODElS
+save(strcat(saveFolder,"MODELS_BAYES.mat"), 'MODELS', '-v7.3');
+% end
 
 
 

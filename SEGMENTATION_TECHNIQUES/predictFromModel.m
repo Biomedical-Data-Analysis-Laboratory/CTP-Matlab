@@ -30,19 +30,6 @@ for t=1:nImages
         end
     end
     
-    %% deal with old infactions
-%     oldInfaction = find(realValueImages{5,t}==0);
-%     maskSkull = find(pred_img{1,t}>0);
-%     intersection = intersect(maskSkull, oldInfaction);
-%     
-%     maskInter = zeros(size(pred_img{1,t}));
-%     maskInter(intersection) = 1;
-%     maskConv = bwconvhull(maskInter, 'objects');
-%     intersApprox = activecontour(maskInter, maskConv, 10, 'edge');
-%     idx_approx = find(intersApprox==1);
-%     
-%     pred_img{1,t}(idx_approx) = classPixel(2); % brain
-    
     %% get contourn from manual annotaions
     name = num2str(t);
     if length(name) == 1
@@ -60,12 +47,12 @@ for t=1:nImages
     %% regions_params(1) == penumbra 
     regions_params(1).mask = zeros(512);
     regions_params(1).threshold = 85;
-    regions_params(1).area = 75;
+    regions_params(1).area = 200;
     regions_params(1).color = 'g';
     %% regions_params(1) == core 
     regions_params(2).mask = zeros(512);
     regions_params(2).threshold = 250;
-    regions_params(2).area = 75;
+    regions_params(2).area = 100;
     regions_params(2).color = 'r';
     %%
     for ri = 1:size(regions_params,2)
@@ -101,6 +88,8 @@ for t=1:nImages
     visboundaries(I_core,'Color',[1,1,1] * (core_color/255)); 
     print(figure(t), '-dpng', strcat(saveFolder, patient, saveSubFolder, suffix, "_", name, ".png")); 
 end
+
+close all;
 
 end
 

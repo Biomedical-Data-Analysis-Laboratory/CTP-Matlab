@@ -54,7 +54,7 @@ output(brain_idx) = 1;
 output(penumbra_idx) = 2;
 output(core_idx) = 3;
 % weights(brain_idx) = 5;
-% weights(penumbra_idx) = 10;
+% weights(penumbra_idx) = 2;
 weights(core_idx) = 5;
 
 % output_penumbra(back_idx) = 0;
@@ -76,9 +76,6 @@ tableData = table(indexPatient,cbf(:),cbv(:),tmax(:),ttp(:),oldInfactionMask(:),
     'VariableNames', ["patient","cbf","cbv","tmax","ttp","oldInfarction","weights","output"]);
 dataWithOutput = [cbf(:),cbv(:),tmax(:),ttp(:),oldInfactionMask(:),output(:)];
 data = [cbf(:),cbv(:),tmax(:),ttp(:),oldInfactionMask(:)];
-% for svm (NOT used atm)
-% data_core = [cbf(:),cbv(:)];
-% data_penumbra = [tmax(:),ttp(:)];
 
 end
 

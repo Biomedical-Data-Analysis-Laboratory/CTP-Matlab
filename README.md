@@ -12,3 +12,4 @@ MATLAB repository for pre-processing, extract information and thresholding CTP i
 - **INFO (new patients):** files used to extract the information from the new patients.
 - **PM_Thresholding:** folder that contains the files to threshold the parametric maps of the patients.
 - **AUC_ROC**: folder containing the files to plot the ROC curve.
+- **UTILS**: directory that contains some utils function for the pre-processing/classification.

@@ -1,4 +1,4 @@
-function Image = rearrangeImages(ImageFolder, ISLISTOFDIR, patients, SAVE, workspaceFolder)
+function Image = rearrangeImages(ImageFolder, ISLISTOFDIR, patients, SAVE, workspaceFolder, suffix_workspace)
 % Rearrange images, so that they are sorted  spatially and temporally.
 % ImageFolder specifies the folder name where the patient folders are
 % located. The code is meant to function with the dataset used in the
@@ -8,6 +8,7 @@ function Image = rearrangeImages(ImageFolder, ISLISTOFDIR, patients, SAVE, works
 %     -Keep only the largest region with intensity values above 400.
 %     -Set pixels below 800 to zero.
 
+save_prefix = '01_Rearrage.';
 
 for p = patients
 
@@ -22,7 +23,11 @@ for p = patients
             end
         end
     else 
-        folderPath = ImageFolder{find(patients==p)};
+        folderPath = ImageFolder{patients==p};
+        if strcmp(folderPath,"")
+            Image{p} = []; % the images of the current patient can NOT be retrieved
+            continue
+        end
     end
    
     n = numel(dir(folderPath))-2;
@@ -67,11 +72,21 @@ for p = patients
         end
     else % we already have the list of folder file
         DICOMinfoFold = dir(folderPath);
-        i = 1;                                   
+        i = 1;                  
+        
+        p_id = convertCharsToStrings(folderPath(strfind(folderPath, "CTP_"):strfind(folderPath, "CTP_")+9));
+        disp(p_id);
+        
+        if exist(workspaceFolder + convertCharsToStrings(save_prefix) + p_id + ".mat", 'file')==2
+            load(workspaceFolder + convertCharsToStrings(save_prefix) + p_id + ".mat");
+            Image{p} = patImage;
+            continue
+        end
+        
         for dicomFile = DICOMinfoFold'
              if ~strcmp(dicomFile.name, '.') && ~strcmp(dicomFile.name, '..')
                 info{i} = dicominfo(fullfile(dicomFile.folder, dicomFile.name));
-
+                
                 ny1{i} = i;
                 ny2{i} = info{i}.SliceLocation;
                 ny4{i} = info{i}.AcquisitionTime;
@@ -178,43 +193,26 @@ for p = patients
             
         end
         if SAVE
-            if p<10
-                fname = ([workspaceFolder 'Registered.PA0' num2str(p) '.mat']);
+            if ~ISLISTOFDIR
+                if p<10
+                    fname = ([workspaceFolder save_prefix 'PA0' num2str(p) '.mat']);
+                else
+                    fname = ([workspaceFolder save_prefix 'PA' num2str(p) '.mat']);
+                end
             else
-                fname = ([workspaceFolder 'Registered.PA' num2str(p) '.mat']);
+                fname = workspaceFolder + convertCharsToStrings(save_prefix) + p_id + ".mat";
             end
             patImage = Image{p};
             save(fname,'patImage','-v7.3')
         end
     end
-    if 0
-        for i = 1:n22
-            lengde(i) = length(ny3{i});
-            if length(ny3{i}) == 533
-                indn(i) = str2num(ny3{i}(end));
-            elseif length(ny3{i}) == 50
-                indn(i) = str2num(ny3{i}(end-1:end));
-            elseif length(ny3{i}) == 51
-                indn(i) = str2num(ny3{i}(end-2:end));
-            end
-            
-        end
-        indn = indn';
-        
-        aaaa = [tempOrder{1,1}{1,1}' tempOrder{1,1}{1,2}' tempOrder{1,1}{1,3}' tempOrder{1,1}{1,4}'...
-            tempOrder{1,1}{1,5}' tempOrder{1,1}{1,6}' tempOrder{1,1}{1,7}' tempOrder{1,1}{1,8}'...
-            tempOrder{1,1}{1,9}' tempOrder{1,1}{1,10}' tempOrder{1,1}{1,11}' tempOrder{1,1}{1,12}'...
-            tempOrder{1,1}{1,13}']'+2;
-        
-        find(ismember(aaaa,indn) == 0)
-    end
 end
 
 
-if SAVE
-    save(strcat(workspaceFolder, 'timesec.mat'),'timesec')    
-end
+% if SAVE
+%     save(strcat(workspaceFolder, 'timesec', suffix_workspace, '.mat'),'timesec')    
+% end
 
 if SAVE
-    save(strcat(workspaceFolder, 'Image.mat'),'Image','-v7.3')
+    save(strcat(workspaceFolder, 'Image', suffix_workspace, '.mat'),'Image','-v7.3')
 end

@@ -8,357 +8,64 @@ USER = 'C:\Users\';
 USER = strcat(USER, 'Luca\');
 % USER = strcat(USER, '2921329\');
 
-%% CONSTANTS
-PARAMETRIC_IMAGES_TO_ANALYZE = 1; % to read the proper images (parametric maps images (png) or DICOM files)
-SAVE_PAR_MAPS = 0; 
-% to run also the penumbra-core statistics
-flag_PENUMBRACORE = 1;
-DIFFERENT_PERCENTAGES = 0;
+
+%% folders for the original Patients
+% HOME = strcat(USER, 'OneDrive - Universitetet i Stavanger/');
+% perfusionCTFolder = strcat(HOME, 'PhD/Patients/');
+% SAVED_MODELS_FOLDER = strcat(perfusionCTFolder, 'SAVED_MODELS/');
+% 
+% if PARAMETRIC_IMAGES_TO_ANALYZE
+%     perfusionCTFolder = strcat(perfusionCTFolder, 'extracted_info/'); % update the perfusion folder
+%     saveFolder = perfusionCTFolder;
+% else
+%     saveFolder = strcat(perfusionCTFolder, 'extracted_info/');
+% end
+% 
+% MANUAL_ANNOTATION_FOLDER = strcat(USER, 'OneDrive - Universitetet i Stavanger/Master_Thesis/CT_perfusion_markering_processed_2.0/COMBINED_GRAYAREA_2.0/');
+% % brain, CBF, CBV, TMax, TTP <-- this is the order
+% subfolds = ["SE000003", "SE000004", "SE000005", "SE000006", "SE000007"]; 
+% patient_index = 2:11;
+
+%% folders for the new dataset (SUS 2020)
 HOME = strcat(USER, 'OneDrive - Universitetet i Stavanger/');
-perfusionCTFolder = strcat(HOME, 'PhD/Patients/');
+perfusionCTFolder = strcat(USER, 'Desktop\SUS2020\');
+SAVED_MODELS_FOLDER = strcat(HOME, 'PhD/Patients/SAVED_MODELS/');
 
 if PARAMETRIC_IMAGES_TO_ANALYZE
-    perfusionCTFolder = strcat(perfusionCTFolder, 'extracted_info/');
+    perfusionCTFolder = strcat(perfusionCTFolder, 'Parametric_Maps/'); % update the perfusion folder
     saveFolder = perfusionCTFolder;
+    mkdir(saveFolder);
 else
-    saveFolder = strcat(perfusionCTFolder, 'extracted_info/');
+    saveFolder = strcat(perfusionCTFolder, 'Parametric_Maps/');
 end
 
-MANUAL_ANNOTATION_FOLDER = strcat(USER, 'OneDrive - Universitetet i Stavanger/Master_Thesis/CT_perfusion_markering_processed_2.0/COMBINED_GRAYAREA_2.0/');
-
-patients = ["PA02","PA03","PA04", "PA05", "PA06", "PA07", "PA08", "PA09", "PA10", "PA11"]; 
-% brain , CBF, CBV, TMax, TTP
-subfolds = ["SE000003", "SE000004", "SE000005", "SE000006", "SE000007"]; 
-
-% flag for the leave-one-out prediction (predict with other models!)
-totalTableData = table(); 
-totalData = cell(1,numel(patients));
-totalNImages = cell(1,numel(patients));
-PREDICT_WITH_OTHER_MODElS = 1;
-
-%% colors index
-colorbarPointTopX = 129;
-colorbarPointBottomX = 384;
-colorbarPointY = 436;
-penumbra_color = 76;
-core_color = 150;
+MANUAL_ANNOTATION_FOLDER = "";
+% MIP, CBF, CBV, TMax, TTP <-- this is the order
+subfolds = ["MIP", "CBF", "CBV", "TMAX", "TTP"]; 
+patient_index = [12,15,76,79];
 
 
-%% values for each parametric map [perc(%), up/down, core/penumbra]
-
-researchesValues = containers.Map;
-researchesValues('superpixelsbayes') = struct('cluster',"yes"); % no need of thresholding values!
-
-% researchesValues('Cereda_2015') = struct('CBF', [38, "down", "core", ""], 'TMax', [33, "up", "penumbra", ""]);
-% researchesValues('Wintermark_2006') = struct('CBV', [33, "down", "core", ""]); %, 'MTT', [6, "up", "penumbra"]);
-% researchesValues('Ma_Cambell_2019') = struct('CBF', [30, "down", "core", ""], 'TMax', [50, "up", "penumbra", ""]);
-% % % researchesValues('Bivard_Lin_2014') = struct('CBF', [30, "down", "core"], 'TMax', [50, "up", "penumbra"]);
-% % 
-% researchesValues('Shaefer_2014') = struct('CBF', [15, "down", "core", ""], 'CBV', [30, "down", "core", ""]);
-% % 
-% % % researchesValues('Bivard_2014') = struct('CBF', [50, "down", "core"], 'TTP', [75, "up", "penumbra"]);
-% researchesValues('Cambell_2012') = struct('CBF', [31, "down", "core", 10], 'TTP', [20, "up", "core", ""], 'TMax', [50, "up", "penumbra", ""]);
-% researchesValues('Murphy_2006') = struct('CBF', [13.3, "down", "core", ""], 'CBV', [18.6, "down", "core", 5], 'CBF_2', [25, "down", "penumbra", ""], 'CBV_2', [36, "down", "penumbra", 10]);
-% % % researchesValues('Shaefer_2006') = struct('CBF', [17.92, "down", "penumbra"], 'CBV', [24.5, "down", "core"]);
-% % % researchesValues('Shaefer_2006_2') = struct('CBF', [8.8, "down", "core"], 'CBV', [49, "down", "penumbra"]);
-% % % researchesValues('Bivard') = struct('CBF', [50, "down", "core"], 'TTP', [75, "down", "penumbra"]);
-% % %researchesValues('COMB_Wintermark_Shaefer') = struct('CBV', [24.5, "down", "core"], 'CBF', [30, "down", "penumbra"], 'TMax', [50, "up", "penumbra"], 'TTP', [75, "up", "penumbra"]);
-
-
-stats = table();
-statsClassific = table();
-
-MODELS = cell(1,numel(patients));
-%% for each suffix 
-for suff = researchesValues.keys
-    count = 0;
-    
-    suffix = suff{1};
-    research = researchesValues(suffix);
-    parametricMaps = fieldnames(research);
-    
-        
-    %% for each patient
-    for p=1:numel(patients)
-        percToLoop = 0:10:100;
-        if ~DIFFERENT_PERCENTAGES
-            percToLoop = -1;
-        end
-        
-        for perce=percToLoop
-        tic
-        savePenumbra = 1;
-        saveCore = 1;
-        count = count + 1;
-
-        patient = convertStringsToChars(patients(p));
-
-        combinedResearchCoreMaks = cell(1,50); % initialize the combined core mask
-        combinedResearchPenumbraMaks = cell(1,50); % initialize the combined penumbra mask
-        
-        %% for each subfolder of parametric maps   
-%         maskPenumbra = uint8(zeros(512,512,3));
-%         maskCore = uint8(zeros(512,512,3));
-                
-        for s=1:numel(subfolds)
-            subfold = subfolds(s);
-            intermediateFold = '/';
-            if ~PARAMETRIC_IMAGES_TO_ANALYZE
-                intermediateFold = '/ST000000/';
-            end
-            folderPath = strcat(perfusionCTFolder, patient, intermediateFold, convertStringsToChars(subfold), '/');
-            n = numel(dir(folderPath))-2;
-            %% initialize the cells if we are cecking the grayscale image 
-            if strcmp(subfold, "SE000003")
-                tryImage = cell(1,n); % initialize the ground truth cell
-                groundTruthImage = cell(1,n); % initialize the ground truth cell
-                coreImage = cell(1,n); % initialize the core image cell
-                penumbraImage = cell(1,n); % initialize the penumbra image cell
-                %%
-                totalCoreMask = cell(1,n);
-                totalPenumbraMask = cell(1,n);
-                imageCBV = cell(1,n);
-                imageCBF = cell(1,n);
-                imageTTP = cell(1,n);
-                imageTMAX = cell(1,n);
-                %%
-                sortImages = cell(5,n); % 5 == number of parametric maps + enhanced image
-                skullMasks = cell(5,n);
-            end
-
-            %% get the information of the various map for a specific subfolder
-            [combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks, ...
-                penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats,data,tableData,nImages] = ...
-                getInfoFromSubfold(subfold,PARAMETRIC_IMAGES_TO_ANALYZE,research,folderPath,patient,PREDICT_WITH_OTHER_MODElS,... 
-                MANUAL_ANNOTATION_FOLDER,saveFolder,colorbarPointY,parametricMaps,suffix,...
-                colorbarPointBottomX,colorbarPointTopX,penumbra_color,core_color,flag_PENUMBRACORE,SAVE_PAR_MAPS,count,perce, ...
-                combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks, ...
-                penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats,statsClassific,MODELS);
-        
-            if strcmp(subfold, "SE000007")
-                % concatenate the data information in a table
-                totalTableData = [totalTableData; tableData];
-                totalData{1,p} = data;
-                totalNImages{1,p} = nImages;
-            end
-        end
-        
-        toc
-        %% Save the ground truth images
-%         if exist('groundTruthImage', 'var') && exist('combinedResearchCoreMaks', 'var') && exist('combinedResearchPenumbraMaks', 'var')
-%             
-%              % create the folders if it don't exist
-%             if ~ exist(strcat(saveFolder, patient, '/GROUNDTRUTH'),'dir')
-%                 mkdir(strcat(saveFolder, patient, '/GROUNDTRUTH'));
-%             end
-%             if ~ exist(strcat(saveFolder, patient, '/GROUNDTRUTH/', suffix),'dir')
-%                 mkdir(strcat(saveFolder, patient, '/GROUNDTRUTH/', suffix));
-% %             else
-% %                 if count~=researchesValues.Count
-% %                     continue
-% %                 end
-%             end      
-%             if ~ exist(strcat(saveFolder, patient, '/GROUNDTRUTH/', suffix, '/core'),'dir')
-%                 mkdir(strcat(saveFolder, patient, '/GROUNDTRUTH/', suffix, '/core'));
-%             end
-%             if ~ exist(strcat(saveFolder, patient, '/GROUNDTRUTH/', suffix, '/penumbra'),'dir')
-%                 mkdir(strcat(saveFolder, patient, '/GROUNDTRUTH/', suffix, '/penumbra'));
-%             end
-%             if ~ exist(strcat(saveFolder, patient, '/GROUNDTRUTH/', suffix, '/contourns'),'dir')
-%                 mkdir(strcat(saveFolder, patient, '/GROUNDTRUTH/', suffix, '/contourns'));
-%             end
-%             if ~ exist(strcat(saveFolder, patient, '/GROUNDTRUTH/_COMBINED'),'dir')
-%                 mkdir(strcat(saveFolder, patient, '/GROUNDTRUTH/_COMBINED'));
-%             end
-%             if ~ exist(strcat(saveFolder, patient, '/GROUNDTRUTH/_COMBINED/core'),'dir')
-%                 mkdir(strcat(saveFolder, patient, '/GROUNDTRUTH/_COMBINED/core'));
-%             end
-%             if ~ exist(strcat(saveFolder, patient, '/GROUNDTRUTH/_COMBINED/penumbra'),'dir')
-%                 mkdir(strcat(saveFolder, patient, '/GROUNDTRUTH/_COMBINED/penumbra'));
-%             end
-%             if ~ exist(strcat(saveFolder, patient, '/GROUNDTRUTH/_COMBINED/contourns'),'dir')
-%                 mkdir(strcat(saveFolder, patient, '/GROUNDTRUTH/_COMBINED/contourns'));
-%             end
-%             
-%             researchArray = struct2array(research);
-%             
-%             for indexImg=1:numel(tryImage)
-%             %for indexImg=1:numel(groundTruthImage)
-%                
-%                 pIndex = patient(end-1:end);
-%                 name = num2str(indexImg);
-%                 if length(name) == 1
-%                     name = strcat('0', name);
-%                 end
-% 
-%                 I = imread(strcat(MANUAL_ANNOTATION_FOLDER, 'Patient', pIndex, '/', pIndex , name, '.png'));
-%                 Igray = rgb2gray(I);
-%                 I_penumbra = Igray==penumbra_color; % PENUMBRA COLOR
-%                 I_core = Igray==core_color; % CORE COLOR
-%                 
-%                 saveCombInfarctedRegions = imfuse(penumbraImage{indexImg}, coreImage{indexImg}, 'blend');
-%                 saveCombInfarctedRegions(saveCombInfarctedRegions==64) = 255;
-%                 coreElement = sum(researchArray=="core");
-%                 penumbraElement = sum(researchArray=="penumbra");
-% %                 CI = saveCombInfarctedRegions .* uint8(totalCoreMask{indexImg}>=coreElement);
-% %                 CI(CI==0)=255;
-% %                 PI = saveCombInfarctedRegions .* uint8(totalPenumbraMask{indexImg}>=penumbraElement);
-% %                 PI(PI==0)=255;
-%                 
-%                 %figure, imshow(tryImage{indexImg});
-%                 figure, imshow(saveCombInfarctedRegions);
-%                 hold on
-%                 visboundaries(I_penumbra,'Color',[1,1,1] * (penumbra_color/255)); 
-%                 visboundaries(I_core,'Color',[1,1,1] * (core_color/255)); 
-%                 print(figure(1), '-dpng', strcat(saveFolder, patient, '/GROUNDTRUTH/', suffix, '/contourns/', name, '_', suffix, '_contourns.png'));
-% 
-%                 %% save the image + the contourn for penumbra and core
-%                 imwrite(saveCombInfarctedRegions, strcat(saveFolder, patient, '/GROUNDTRUTH/', suffix, '/', name, '_', suffix, '.png'))
-%                 %imwrite(tryImage{indexImg}, strcat(saveFolder, patient, '/GROUNDTRUTH/', suffix, '/', name, '_', suffix, '.png'))
-%                 
-%                 if saveCore
-%                     figure, imshow(totalCoreMask{indexImg});
-% %                     figure, imshow(CI);
-%                     hold on
-%                     visboundaries(I_core,'Color',[1,1,1] * (penumbra_color/255)); 
-%                     print(figure(2), '-dpng', strcat(saveFolder, patient, '/GROUNDTRUTH/', suffix, '/core/', name, '_', suffix, '_contourns.png'));
-% 
-% %                     imwrite(coreImage{indexImg}, strcat(saveFolder, patient, '/GROUNDTRUTH/', suffix, '/core/', name, '_', suffix, '_core.png'))
-%                     imwrite(totalCoreMask{indexImg}, strcat(saveFolder, patient, '/GROUNDTRUTH/', suffix, '/core/', name, '_', suffix, '_core.png'))
-%                 end
-% 
-%                 if savePenumbra
-%                     penumbraWithoutCore = totalPenumbraMask{indexImg}-totalCoreMask{indexImg};
-%                     figure, imshow(penumbraWithoutCore);
-%                     %figure, imshow(PI);
-%                     hold on
-%                     visboundaries(I_penumbra,'Color',[1,1,1] * (core_color/255)); 
-%                     print(figure(3), '-dpng', strcat(saveFolder, patient, '/GROUNDTRUTH/', suffix, '/penumbra/', name, '_', suffix, '_contourns.png'));
-% 
-% %                     imwrite(penumbraImage{indexImg}, strcat(saveFolder, patient, '/GROUNDTRUTH/', suffix, '/penumbra/', name, '_', suffix, '_penumbra.png'))
-%                     imwrite(penumbraWithoutCore, strcat(saveFolder, patient, '/GROUNDTRUTH/', suffix, '/penumbra/', name, '_', suffix, '_penumbra.png'))
-%                 end
-%                 
-%                 %% save the combined image
-% %                 if count==researchesValues.Count 
-% %                     quorum = researchesValues.Count/2 + 1;
-% %                     combImage = cat(3, (combinedResearchCoreMaks{indexImg} >= quorum)*255, (combinedResearchPenumbraMaks{indexImg} >= quorum)*255, uint8(zeros(size(combinedResearchPenumbraMaks{indexImg}))));
-% %                     figure, imshow(combImage);
-% %                     hold on
-% %                     visboundaries(I_penumbra,'Color',[1,1,1] * (penumbra_color/255)); 
-% %                     visboundaries(I_core,'Color',[1,1,1] * (core_color/255)); 
-% %                     print(figure(4), '-dpng', strcat(saveFolder, patient, '/GROUNDTRUTH/_COMBINED/contourns/', name, '_contourns.png'));
-% % 
-% %                     imshow(combImage);
-% %                     imwrite(combImage, strcat(saveFolder, patient, '/GROUNDTRUTH/_COMBINED/', name, '.png'))
-% %                 end
-% 
-%                 
-%                 close all;
-%             end
-%         end
-        
-        end
+%% patients 
+patient_prefix = "PA";
+patients = []; 
+for p=patient_index
+    name = num2str(p);
+    if length(name) == 1
+        name = strcat('0', name);
     end
-      
-    if isfield(research, "cluster") && strcmp(research.cluster, "yes")
-        %% for each patient
-        for p=1:numel(patients)
-            
-            patient = convertStringsToChars(patients(p));
-            pIndex = patient(end-1:end);
-            if ~ exist(strcat(saveFolder, patient, '/CLUSTER_OTHER_PATIENTS'),'dir')
-                mkdir(strcat(saveFolder, patient, '/CLUSTER_OTHER_PATIENTS'));
-            end
-            
-            currentTableIndex = (totalTableData.patient ~= str2double(pIndex));
-            currentTable = totalTableData(currentTableIndex,:);
-            
-            %% reduce the table
-%             uniqueRowsTable = unique(currentTable(:,2:end));
-            uniqueRowsTable = currentTable(:,2:end);
-            
-%             uniqueWithoutOutput = unique(uniqueRowsTable(:,1:end-2));
-% 
-%             for row_idx = 1:size(uniqueWithoutOutput,1)
-%                 rows = (uniqueRowsTable.cbf==uniqueWithoutOutput.cbf(row_idx) & ...
-%                     uniqueRowsTable.cbv==uniqueWithoutOutput.cbv(row_idx) & ...
-%                     uniqueRowsTable.tmax==uniqueWithoutOutput.tmax(row_idx) & ...
-%                     uniqueRowsTable.ttp==uniqueWithoutOutput.ttp(row_idx) & ...
-%                     uniqueRowsTable.oldInfarction==uniqueWithoutOutput.oldInfarction(row_idx));
-%                 
-%                 if sum(rows) > 1 
-%                     tabToCheck = uniqueRowsTable(rows,:);
-%                     indexRows = find(rows);
-%                     countRows = [];
-%                     for rr_idx = 1:size(tabToCheck,1)
-%                         realRows = (currentTable.cbf==tabToCheck.cbf(rr_idx) & ...
-%                         currentTable.cbv==tabToCheck.cbv(rr_idx) & ...
-%                         currentTable.tmax==tabToCheck.tmax(rr_idx) & ...
-%                         currentTable.ttp==tabToCheck.ttp(rr_idx) & ...
-%                         currentTable.oldInfarction==tabToCheck.oldInfarction(rr_idx) & ...
-%                         currentTable.weights==tabToCheck.weights(rr_idx) & ...
-%                         currentTable.output==tabToCheck.output(rr_idx));
-%                     
-%                         countRows = [countRows; sum(realRows)];
-%                     end
-%                     
-%                     [~,I] = max(countRows);
-%                     rows(indexRows(I)) = 0; % don't count the row with highest values
-%                     uniqueRowsTable(rows,:) = []; % delete all the other rows
-%                 end
-%             end
-
-            %% train the model 
-            options = statset('UseParallel',false);
-            %%KNN
-%             t = templateKNN('NumNeighbors',1,'Standardize',1, ...
-%                 'Distance','jaccard','DistanceWeight','squaredinverse','IncludeTies',false); 
-%             Mdl = fitcensemble(uniqueRowsTable,"output", "Method","Subspace", "Learner",t,'Weights',"weights");
-            %%tree
-%             t = templateTree('MaxNumSplits',1500); 
-%             Mdl = fitcensemble(currentTable,"output", "Method","AdaBoostM2", "Learner",t, ...
-%                 'Weights', "weights");
-            
-%             t = templateSVM('Standardize',true,'KernelFunction','gaussian');
-            t = templateNaiveBayes('DistributionNames','kernel');
-%             t = templateDiscriminant();
-%             t = templateTree('MaxNumSplits',1500,'AlgorithmForCategorical','Exact'); 
-            Mdl = fitcecoc(uniqueRowsTable,"output",'Learners',t,'Weights', "weights",...
-                'Coding','onevsall','Options',options,'Verbose',1);
-
-            %% template and model for optimize hyperparameters
-%             t = templateTree('AlgorithmForCategorical','OVAbyClass','SplitCriterion','deviance',...
-%                 'MinLeafSize',1,'MaxNumSplits',150); 
-%             Mdl = fitcensemble(uniqueRowsTable,"output", "Method","AdaBoostM2", "Learner",t, 'Weights', "weights",...
-%                 'OptimizeHyperparameters',{'NumLearningCycles','LearnRate','MaxNumSplits'});
-
-            MODELS{1,p} = Mdl; % add the Mdl to MODELS for predictions without ground truth
-            
-            new_suffix = strcat(suffix, "_", pIndex);
-            
-            tic
-            [predictions,statsClassific] = predictFromModel(Mdl,totalData{1,p},totalNImages{1,p}, ...
-                MANUAL_ANNOTATION_FOLDER,pIndex,penumbra_color,core_color, ...
-                statsClassific,new_suffix,patient,saveFolder, '/CLUSTER_OTHER_PATIENTS/');
-            toc
-%            % display MEAN SQUARE ERROR (MSE)
-%             disp("MSE:");
-%             disp(immse(output(:), predictions));
-        end
-    end
+    patients = [patients; strcat(patient_prefix,name)];
 end
 
+SHOW_IMAGES = 1;
+[predictions,statsClassific] = mainExtractionFunc(patients,perfusionCTFolder,MANUAL_ANNOTATION_FOLDER,SAVED_MODELS_FOLDER,saveFolder,subsavefolder,subfolds,SHOW_IMAGES);
 
-%% save the statistic information (both for the classification approach and the thresholding approach
-calculateStats(statsClassific,saveFolder,"statsClassific_bayes.mat");
-% calculateStats(stats,saveFolder,"Cambell_AUC10_allstats.mat");
-
-% if ~PREDICT_WITH_OTHER_MODElS
-save(strcat(saveFolder,"MODELS_BAYES.mat"), 'MODELS', '-v7.3');
-% end
-
-
+if SUPERVISED_LEARNING
+    if ~isempty(statsClassific)
+        %% save the statistic information (both for the classification approach and the thresholding approach
+        calculateStats(statsClassific,SAVED_MODELS_FOLDER,strcat("statsClassific_2steps_",SUFFIX_RES,".mat"));
+        % calculateStats(stats,saveFolder,"Cambell_AUC10_allstats.mat");
+    end
+end
 
 
 

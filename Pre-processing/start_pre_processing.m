@@ -1,35 +1,72 @@
 close all
 warning off
-
-%% UNIX SYSTEM
-% root_folder = '/home/stud/lucat/';
-% 
-% args.directory = strcat(root_folder, 'Patients/');
-% args.patients = double(2:11);
-% args.annotatedImagesFolder = strcat(root_folder, 'CT_perfusion_markering_processed/CROPPED/');
-% args.save = 1;
-% args.saveRegisteredFolder = strcat(root_folder, 'Registered_images_3.0/');
-% args.workspaceFolder = strcat(root_folder, 'Workspaces/');
-
+%% -------------------------------------------------------------
 %% APPLE
-USER = '/Users/lucatomasetti/';
+% USER = '/Users/lucatomasetti/';
 %% WINDOWS
-% USER = 'C:\Users\';
+USER = 'C:\Users\';
+USER = strcat(USER, 'Luca\');
 % USER = strcat(USER, '2921329\');
-
-%% LOCAL SYSYEM
+%% -------------------------------------------------------------
+%% LOCAL VARIABLE SYSYEM
 HOME = strcat(USER, 'OneDrive - Universitetet i Stavanger/');
 folder = strcat(HOME, 'PhD/');
 matlabFolder = strcat(folder, 'MATLAB_CODE/');
-%args.directory = strcat(folder, 'Patients/');
-args.directory = strcat(USER, 'Desktop/uni-stavanger/PerfusionCT/');
-args.patients = double(1:16);
-% args.annotatedImagesFolder = ""; 
-args.annotatedImagesFolder = strcat(USER, 'Desktop/uni-stavanger/CT_perfusion_markering_processed/CROPPED/');
+%% -------------------------------------------------------------
+%% ORIGINAL 10 PATIENTS
+% args.patients = double(1:11);
+% args.directory = strcat(USER, 'Desktop/uni-stavanger/PerfusionCT/');
+% args.annotatedImagesFolder = ""; % strcat(USER, 'OneDrive - Universitetet i Stavanger/Master_Thesis/CT_perfusion_markering_processed_2.0/COMBINED_GRAYAREA_2.0/');
+% args.saveRegisteredFolder = strcat(folder, 'Patients/Registered_images/'); %strcat(matlabFolder, 'Registered_images_2/');
+% args.workspaceFolder = strcat(matlabFolder, 'Workspace/'); 
+% args.finalSaveFolder = strcat(args.saveRegisteredFolder, "FINAL/");
+%% -------------------------------------------------------------
+%% ISLES 2018
+% flag = 'TESTING/'; % 'TRAINING/'
+% ISLES2018Folder = strcat(USER, 'Desktop/ISLES2018/');
+% args.directory = strcat(ISLES2018Folder, flag);
+% args.patients = double(1:62); % 94 for training
+% args.annotatedImagesFolder = "";
+% args.saveRegisteredFolder = strcat(ISLES2018Folder, 'NEW_', flag);
+% args.workspaceFolder = strcat(matlabFolder, 'Workspace/'); 
+% args.finalSaveFolder = strcat(args.saveRegisteredFolder, "FINAL/");
+% args.isNIfTI = 1;
+% args.isISLES2018 = 1;
+%% -------------------------------------------------------------
+%% SUS 2020
+% args.patients = double(100:132); % double(1:132);
+% args.directory = 'D:\';
+% register_folder = strcat(USER, 'Desktop\SUS2020\');
+% args.annotatedImagesFolder = "";
+% args.saveRegisteredFolder = strcat(register_folder, 'Registered_images/');
+% args.workspaceFolder = strcat(register_folder, 'Workspaces/');
+% load(strcat(args.workspaceFolder, 'allInfoValuesPERFUSIONCT5.mat'), 'allInfoValuesPERFUSIONCT5');
+% allInforCTP = struct2cell(allInfoValuesPERFUSIONCT5);
+% args.DICOMfolders = allInforCTP(2,:); % 2=index of filename !!! 
+% args.finalSaveFolder = strcat(register_folder, "FINAL/");
+% args.previousNumPatiens = 11;
+%% -------------------------------------------------------------
+%% SUS 2020_v2
+args.patients = double(130:155);
+args.directory = 'D:\SUS2020_v2\';
+register_folder = strcat(USER, 'Desktop\SUS2020_v2\');
+args.annotatedImagesFolder = "";
+args.saveRegisteredFolder = strcat(register_folder, 'Registered_images/');
+args.workspaceFolder = strcat(register_folder, 'Workspace/');
+load(strcat(args.workspaceFolder, 'allInfoValuesPERFUSIONCT5.mat'), 'allInfoValuesPERFUSIONCT5');
+allInforCTP = struct2cell(allInfoValuesPERFUSIONCT5);
+args.DICOMfolders = allInforCTP(2,:); % 2=index of filename !!! 
+args.finalSaveFolder = strcat(register_folder, "FINAL/");
+args.newIDFormat = true;
+
+%% -------------------------------------------------------------
+%% flags
+args.INITIAL_STEP = 3;
 args.save = 1;
-args.saveRegisteredFolder = strcat(USER, 'Desktop/Registered_images/'); %strcat(matlabFolder, 'Registered_images_2/');
-args.workspaceFolder = strcat(matlabFolder, 'Workspace/'); 
-
+args.SAVE_INTERMEDIATE_STEPS = false;
+%% -------------------------------------------------------------
+%% create folders, if necessary
 mkdir(args.saveRegisteredFolder)
-
+%% -------------------------------------------------------------
+%% start!
 MAIN_PREPROCESSING(args);

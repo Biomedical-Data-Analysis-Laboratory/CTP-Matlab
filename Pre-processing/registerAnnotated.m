@@ -1,9 +1,9 @@
-function NewImageRegistered = registerAnnotated(imageToRegister, annotatedImagesFolder, patients, SAVE, workspaceFolder)
+function NewImageRegistered = registerAnnotated(ImageFolder, ISLISTOFDIR, imageToRegister, annotatedImagesFolder, patients, SAVE, workspaceFolder, suffix_workspace)
 %REGISTERANNOTATED 
 %   Function to register the DICOM images, with the addition of the
 %   manually annotated image.
     for patient=patients
-        if patient < 12 % only 11 manual annotation patients
+        if patient < 12 && patient ~= 1 % only 10 manual annotation patients
             if patient<10
                 folderPath = ([annotatedImagesFolder '/Patient0' num2str(patient)]);
             else
@@ -35,13 +35,13 @@ function NewImageRegistered = registerAnnotated(imageToRegister, annotatedImages
     end
 
     if SAVE
-        save(strcat(workspaceFolder, 'NewImageSkullRemoved.mat'),'imageToRegister','-v7.3');
+        save(strcat(workspaceFolder, 'NewImageSkullRemoved', suffix_workspace, '.mat'),'imageToRegister','-v7.3');
     end
 
     % Register the manually annotated images + the images without the skull
-    NewImageRegistered = reg_ct(imageToRegister, patients, 0, SAVE, workspaceFolder, '_new');
+    NewImageRegistered = reg_ct(ImageFolder, ISLISTOFDIR, imageToRegister, patients, 0, SAVE, workspaceFolder, '_new', suffix_workspace);
     if SAVE
-        save(strcat(workspaceFolder, 'NewImageRegistered.mat'),'NewImageRegistered','-v7.3');
+        save(strcat(workspaceFolder, 'NewImageRegistered', suffix_workspace, '.mat'),'NewImageRegistered','-v7.3');
     end
 end
 

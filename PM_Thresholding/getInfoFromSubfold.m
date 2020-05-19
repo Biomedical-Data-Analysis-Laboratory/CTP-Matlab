@@ -1,9 +1,9 @@
-function [combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks,penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats,data,tableData,nImages] = ...
-    getInfoFromSubfold(subfold,PARAMETRIC_IMAGES_TO_ANALYZE,research,folderPath,patient,PREDICT_WITH_OTHER_MODElS,...
-    MANUAL_ANNOTATION_FOLDER,saveFolder,colorbarPointY,parametricMaps,...
+function [combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks,penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats,tableData,nImages] = ...
+    getInfoFromSubfold(subfold,subfolds,PARAMETRIC_IMAGES_TO_ANALYZE,research,folderPath,patient,n_fold,...
+    MANUAL_ANNOTATION_FOLDER,saveFolder,colorbarPointY,parametricMaps,SUPERVISED_LEARNING,FAKE_MIP,...
     suffix,colorbarPointBottomX,colorbarPointTopX,penumbra_color,core_color,flag_PENUMBRACORE,SAVE_PAR_MAPS,count,perce, ...
     combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks, ...
-    penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats,statsClassific,MODELS)
+    penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats)
 %UNTITLED Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -14,7 +14,7 @@ images = cell(1,n);
 sec = zeros(n,2);
 
 %empty initialization
-data = [];
+tableWithoutOutput = [];
 tableData = [];
 nImages = [];
 
@@ -65,13 +65,13 @@ end
 sortInfo = cell(size(info));
 
 pm_index = 1; % for SE000004 == Cerebral Blood Flow (CBF)
-if strcmp(subfold, "SE000005") % for SE000005 == Cerebral Blood Volume (CBV)
+if strcmp(subfold, subfolds(end-2)) % for SE000005 == Cerebral Blood Volume (CBV)
     pm_index = 2;
-elseif strcmp(subfold, "SE000006") % for SE000006: TMax
+elseif strcmp(subfold, subfolds(end-1)) % for SE000006: TMax
     pm_index = 3;
-elseif strcmp(subfold, "SE000007") % SE000007: Time to Peak (TTP)
+elseif strcmp(subfold, subfolds(end)) % SE000007: Time to Peak (TTP)
     pm_index = 4;
-elseif strcmp(subfold, "SE000003") % SE000003: Enhanced image
+elseif strcmp(subfold, subfolds(1)) % SE000003: Enhanced image
     pm_index = 5;
 end
 
@@ -79,16 +79,6 @@ for x=1:size(sec,1)
     newInd = sec(x,2);
     sortInfo{x} = info{newInd};
     sortImages{pm_index,x} = images{newInd};
-
-    % create the folder if it doesn't exits
-    if ~ exist(strcat(saveFolder, patient),'dir')
-        mkdir(strcat(saveFolder, patient));
-    end
-    
-    % create the folder if it doesn't exits
-    if ~ exist(strcat(saveFolder, patient, '/', subfold),'dir')
-        mkdir(strcat(saveFolder, patient, '/', subfold));
-    end
 
     %% save the image
     name = num2str(x);
@@ -99,13 +89,21 @@ for x=1:size(sec,1)
     if length(size(sortImages{pm_index,x})) == 2
         sortImages{pm_index,x} = mat2gray(sortImages{pm_index,x});
     end
-
+    % create the folder if it doesn't exits
+    if ~ exist(strcat(saveFolder, patient),'dir')
+        mkdir(strcat(saveFolder, patient));
+    end
+    
     %% save the parametric map
     if SAVE_PAR_MAPS
+        % create the folder if it doesn't exits
+        if ~ exist(strcat(saveFolder, patient, '/', subfold),'dir')
+            mkdir(strcat(saveFolder, patient, '/', subfold));
+        end
         imwrite(sortImages{pm_index,x}, strcat(saveFolder, patient, '/', subfold, '/', name, '.png'));
     end
 
-    if strcmp(subfold, "SE000003")
+    if subfold == subfolds(1)
         %% extract the shape of the brain slice from the grayscale image
         T = rgb2gray(sortImages{pm_index,x});
         blackWhiteMask = imbinarize(T);
@@ -132,7 +130,7 @@ for x=1:size(sec,1)
         T(:,colorbarPointY:end) = 0; % remove F in the bottom right
         skullMasks{5,x} = double(T); % add the enhanced image for classification
 
-    elseif strcmp(subfold, "SE000004") || strcmp(subfold, "SE000005") || strcmp(subfold, "SE000006") || strcmp(subfold, "SE000007")
+    elseif (subfold == subfolds(2)) || (subfold == subfolds(3)) || (subfold == subfolds(end-1)) || (subfold== subfolds(end))
 
         for indexName=1:numel(parametricMaps)
             mapName = parametricMaps{indexName};
@@ -144,9 +142,9 @@ for x=1:size(sec,1)
             isCore = 0;
             isPenumbra = 0;
 
-            if strcmp(subfold, "SE000004") 
-                blackWhiteMask = imbinarize(rgb2gray(sortImages{pm_index,x}));
-                skullMasks{1,x} = blackWhiteMask .* skullMasks{1,x};
+            if subfold == subfolds(2) 
+%                 blackWhiteMask = imbinarize(rgb2gray(sortImages{pm_index,x}));
+%                 skullMasks{1,x} = blackWhiteMask .* skullMasks{1,x};
                 
                 imageCBF{x} = uint8(sortImages{pm_index,x});
                 imageCBF{x}(:,colorbarPointY:end, :) = 0; % remove colorbar 
@@ -168,9 +166,9 @@ for x=1:size(sec,1)
                         isPenumbra = 1;
                     end
                 end
-            elseif strcmp(subfold, "SE000005") 
-                blackWhiteMask = imbinarize(rgb2gray(sortImages{pm_index,x}));
-                skullMasks{2,x} = blackWhiteMask .* skullMasks{2,x};
+            elseif subfold == subfolds(end-2) 
+%                 blackWhiteMask = imbinarize(rgb2gray(sortImages{pm_index,x}));
+%                 skullMasks{2,x} = blackWhiteMask .* skullMasks{2,x};
                 
                 imageCBV{x} = uint8(sortImages{pm_index,x});
 
@@ -207,9 +205,9 @@ for x=1:size(sec,1)
                         isPenumbra = 1;
                     end
                 end
-            elseif strcmp(subfold, "SE000006") 
-                blackWhiteMask = imbinarize(rgb2gray(sortImages{pm_index,x}));
-                skullMasks{3,x} = blackWhiteMask .* skullMasks{3,x};
+            elseif subfold == subfolds(end-1)
+%                 blackWhiteMask = imbinarize(rgb2gray(sortImages{pm_index,x}));
+%                 skullMasks{3,x} = blackWhiteMask .* skullMasks{3,x};
                 
                 if contains(mapName, 'TMax')
                     imageTMAX{x} = uint8(sortImages{pm_index,x});
@@ -224,9 +222,9 @@ for x=1:size(sec,1)
                         isPenumbra = 1;
                     end
                 end
-            elseif strcmp(subfold, "SE000007") 
-                blackWhiteMask = imbinarize(rgb2gray(sortImages{pm_index,x}));
-                skullMasks{4,x} = blackWhiteMask .* skullMasks{4,x};
+            elseif subfold == subfolds(end-1) 
+%                 blackWhiteMask = imbinarize(rgb2gray(sortImages{pm_index,x}));
+%                 skullMasks{4,x} = blackWhiteMask .* skullMasks{4,x};
                 
                 if contains(mapName, 'TTP')
                     imageTTP{x} = uint8(sortImages{pm_index,x});
@@ -316,7 +314,7 @@ for x=1:size(sec,1)
             end
         end
 
-        if strcmp(subfold, "SE000007") % last folder  
+        if subfold == subfolds(end) % last folder  
             strpercentage = perce;
             if strpercentage<10
                 strpercentage = strcat("00", num2str(perce));
@@ -327,48 +325,18 @@ for x=1:size(sec,1)
             end
             new_suffix = strcat(suffix, "_perc_", strpercentage);
             %% get the statistical information from the image
-            stats = statisticalInfo(stats, new_suffix, totalPenumbraMask{x}, totalCoreMask{x}, MANUAL_ANNOTATION_FOLDER, patient, x, penumbra_color, core_color, flag_PENUMBRACORE);
-
-%                         %% call the method proposed by Rasmus to extract the various infarcted regions
-% %                         outRasmus = RasmusMethod(totalPenumbraMask{x}, totalCoreMask{x}, imageCBV{x}, imageCBF{x}, imageTTP{x}, imageTMAX{x});
-% %                         
-% %                         subplot(3,4,1)
-% %                         imshow(imageCBV{x});
-% %                         subplot(3,4,2)
-% %                         imshow(imageCBF{x});
-% %                         subplot(3,4,3)
-% %                         imshow(imageTTP{x});
-% %                         subplot(3,4,4)
-% %                         imshow(imageTMAX{x});
-% %                         
-% %                         for y=[1,2,3,4]
-% %                             combImg = 0;
-% %                             for xx=[1,2,3]
-% %                                 combImg = combImg + outRasmus{xx}(:,:,:,y);
-% %                             end
-% %                             
-% %                             subplot(3,4,4+y)
-% %                             imshow(combImg)
-% %                         end
-% %                         
-% %                         for xx=[1,2,3]
-% %                             combImg = 0;
-% %                             for y=[1,2,3,4]
-% %                                 combImg = combImg + outRasmus{xx}(:,:,:,y);
-% %                             end
-% %                             
-% %                             subplot(3,4,8+xx)
-% %                             imshow(combImg)
-% %                         end
+            if SUPERVISED_LEARNING % only if we are doing supervised learning 
+                stats = statisticalInfo(stats, new_suffix, totalPenumbraMask{x}, totalCoreMask{x}, MANUAL_ANNOTATION_FOLDER, patient, x, penumbra_color, core_color, flag_PENUMBRACORE);
+            end
         end
     end
 end
 
-if strcmp(subfold, "SE000007") && strcmp("cluster", mapName) % last folder
+if subfold == subfolds(end) && strcmp("cluster", mapName) % last folder
     if strcmp(research.(mapName), "yes")
-        [data,tableData,nImages] = clusterImagesWithRealValues(totalPenumbraMask, totalCoreMask, ...
-        skullMasks, sortImages, colorbarPointBottomX, colorbarPointTopX, colorbarPointY, PREDICT_WITH_OTHER_MODElS, ...
-        MANUAL_ANNOTATION_FOLDER, patient, penumbra_color, core_color, saveFolder, suffix, statsClassific, MODELS);
+        [tableData,nImages] = clusterImagesWithRealValues(skullMasks, sortImages, ...
+            colorbarPointBottomX, colorbarPointTopX, colorbarPointY, MANUAL_ANNOTATION_FOLDER, ...
+            SUPERVISED_LEARNING, FAKE_MIP, patient, n_fold);
     end
 end
 

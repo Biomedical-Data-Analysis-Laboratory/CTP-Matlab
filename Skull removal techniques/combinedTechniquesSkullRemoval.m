@@ -1,4 +1,4 @@
-function ImageSkullRemoved = combinedTechniquesSkullRemoval(ImageRegistered, patients, SAVE, workspaceFolder)
+function ImageSkullRemoved = combinedTechniquesSkullRemoval(ImageRegistered, thold, patients, SAVE, workspaceFolder, suffix_workspace)
 % ANOTHERSKULLREMOVALTECHINIQUE 
 %   Function to remove the skull from the images of the patients
 
@@ -26,7 +26,7 @@ function ImageSkullRemoved = combinedTechniquesSkullRemoval(ImageRegistered, pat
 %                 figure("Name","norm"), imshow(normalisert{image}, []);
 %                 figure("Name", "eq"), imshow(mid{image}, []);
 
-                [~,Mask{image}] = removeSkull2(Im_in,'sym2',9);
+                [~,Mask{image}] = removeSkull2(Im_in,'sym2',thold,patient);
 
                 % agreement on the skull removal regions
                 if eq(image, length(ImageRegistered{patient}{slice}))
@@ -54,7 +54,7 @@ function ImageSkullRemoved = combinedTechniquesSkullRemoval(ImageRegistered, pat
     end
 
     if SAVE
-        save(strcat(workspaceFolder, 'ImageSkullRemoved.mat'),'ImageSkullRemoved','-v7.3');
+        save(strcat(workspaceFolder, 'ImageSkullRemoved', suffix_workspace, '.mat'),'ImageSkullRemoved','-v7.3');
     end
  
 end

@@ -1,6 +1,7 @@
 function [information, informationValues] = getDICOMinfo(mainFolder, field, patFolder)
-%GETDICOMINFO Summary of this function goes here
-%   Detailed explanation goes here
+%GETDICOMINFO Extract the info from the DICOM folder
+%   Function that extract the information of the patient and his/her
+%   treatment using the DICOM headers in each of the folders' study.
     
     parametricMaps = ["MTT", "CBF", "CBV", "TMAX", "TTP", "MIP"];
     
@@ -98,9 +99,6 @@ function [information, informationValues] = getDICOMinfo(mainFolder, field, patF
     % PARAMETRICMAPS folders 
     informationValues.PARAMETRICMAPS.patientFolder = mainFolder.name;
     informationValues.PARAMETRICMAPS.pm = struct;
-% %     for pm = parametricMaps
-% %         informationValues.PARAMETRICMAPS.(pm) = "";
-% %     end
     % MRI parameters 
     informationValues.MRI.patientFolder = mainFolder.name;
     informationValues.MRI.Modality = "";
@@ -132,8 +130,6 @@ function [information, informationValues] = getDICOMinfo(mainFolder, field, patF
                 for DICOMinfo = fileFolder'
                 if ~strcmp(DICOMinfo.name, '.') && ~strcmp(DICOMinfo.name, '..')
                     DICOMinfoFold = dir(fullfile(DICOMinfo.folder, DICOMinfo.name));
-
-                %if strcmp(DICOMinfo.name, "0000AE83")
                                     
                 for dicomFile = DICOMinfoFold'
                 if ~strcmp(dicomFile.name, '.') && ~strcmp(dicomFile.name, '..')    
@@ -197,7 +193,16 @@ function [information, informationValues] = getDICOMinfo(mainFolder, field, patF
                                 end
                                 
                                 informationValues.PARAMETRICMAPS.pm.(fieldPMname).(pm) = dicomFile.folder;
+                                % create the folders
                                 mkdir(strcat(patFolder, "/", dayAndHour));
+                                if isfolder(strcat(patFolder, "/", dayAndHour, "/", pm))
+                                    if numel(dir(strcat(patFolder, "/", dayAndHour, "/", pm))')-2 ~= numel(dir(dicomFile.folder)')-2
+                                        disp(patFolder);
+                                        disp(strcat("REMOVE: ", num2str(numel(dir(strcat(patFolder, "/", dayAndHour, "/", pm))')-2)));
+                                        disp(strcat("INSERT: ", num2str(numel(dir(dicomFile.folder)')-2)));
+                                    end
+                                    rmdir(strcat(patFolder, "/", dayAndHour, "/", pm, "/"), "s");
+                                end
                                 mkdir(strcat(patFolder, "/", dayAndHour, "/", pm));
 
                                 flagStartZero = 0;

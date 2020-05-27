@@ -23,7 +23,7 @@ for p = patients
             end
         end
     else 
-        folderPath = ImageFolder{patients==p};
+        folderPath = ImageFolder{p};
         if strcmp(folderPath,"")
             Image{p} = []; % the images of the current patient can NOT be retrieved
             continue

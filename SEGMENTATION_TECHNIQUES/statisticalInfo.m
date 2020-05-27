@@ -1,7 +1,9 @@
 function [stats] = statisticalInfo(stats, suffix, penumbraMask, coreMask, ...
-    MANUAL_ANNOTATION_FOLDER, patient, indexImg, penumbra_color, core_color, flag_PENUMBRACORE)
-%STATISTICALINFO Summary of this function goes here
-%   Detailed explanation goes here
+    MANUAL_ANNOTATION_FOLDER, patient, dayFold, indexImg, penumbra_color, core_color, flag_PENUMBRACORE)
+%STATISTICALINFO Get statistics from patients and the corresponding
+% ground truth
+%   Function that get the statistics of each patient and their extraction
+%   based on the corresponding ground truth images
 
 pIndex = patient(end-1:end);
 name = num2str(indexImg);
@@ -14,8 +16,15 @@ penumbraMask = penumbraMask - coreMask;
 penumbraMask = double(penumbraMask>0);
 coreMask = double(coreMask);
 
-I = imread(strcat(MANUAL_ANNOTATION_FOLDER, 'Patient', pIndex, '/', pIndex , name, '.png'));
-Igray = rgb2gray(I);
+filename = strcat(MANUAL_ANNOTATION_FOLDER, 'Patient', pIndex, '/', pIndex , name, '.png');
+if isfile(filename)
+    I = imread(filename);
+    Igray = rgb2gray(I);
+else
+    filename = strcat(MANUAL_ANNOTATION_FOLDER, patient, "\", dayFold, "\", name, '.png');
+    Igray = imread(filename);
+end
+
 index_no_back = find(Igray~=255);
 
 I_penumbra = double(Igray==penumbra_color); % PENUMBRA COLOR
@@ -33,7 +42,6 @@ if flag_PENUMBRACORE
     penumbraCoreMask_reshape = reshape(penumbraCoreMask, 1,[]);
 end
     
-
 penumbraMask_noback =  penumbraMask(index_no_back);
 penumbraMask_reshape = reshape(penumbraMask,1,[]);
 I_penumbra_reshape = reshape(I_penumbra,1,[]);
@@ -49,6 +57,8 @@ if flag_PENUMBRACORE
     penumbraCoreMask_noback = double(penumbraCoreMask_noback>=1);
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Confusion matrices
 CM_penumbra = confusionmat(I_penumbra_reshape,penumbraMask_reshape);
 if numel(CM_penumbra)==1
     CM_penumbra = double(reshape([CM_penumbra, 0, 0, 0], 2,2));
@@ -85,6 +95,17 @@ else
     CM_both_noback = double(reshape([0,0,0,0], 2,2));
 end
 
+% check if noback are empty
+if isempty(CM_penumbra_noback)
+    CM_penumbra_noback = [0,0;0,0];
+end
+if isempty(CM_core_noback)
+    CM_core_noback = [0,0;0,0];
+end
+if isempty(CM_both_noback)
+    CM_both_noback = [0,0;0,0];
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% table structure:
 % table("name", "tn_p", "fn_p", "fp_p", "tp_p", "tn_c", "fn_c", "fp_c", "tp_c", "tn_pc", "fn_pc", "fp_pc", "tp_pc" "auc_p" "auc_c" "auc_pc");
 rowToAdd = {suffix, ...

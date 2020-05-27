@@ -3,9 +3,10 @@ function [combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundT
     MANUAL_ANNOTATION_FOLDER,saveFolder,colorbarPointY,parametricMaps,SUPERVISED_LEARNING,FAKE_MIP,...
     suffix,colorbarPointBottomX,colorbarPointTopX,penumbra_color,core_color,flag_PENUMBRACORE,SAVE_PAR_MAPS,count,perce, ...
     combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks, ...
-    penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats)
-%UNTITLED Summary of this function goes here
-%   Detailed explanation goes here
+    penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats,dayFold)
+% GETINFOFROMSUBFOLD Extract the various images from the subfold
+%   For each subfold, extract the images and if the flag is set, it will
+%   cluster the images (last lines)
 
 n = numel(dir(folderPath))-2;
 
@@ -13,11 +14,12 @@ info = cell(1,n);
 images = cell(1,n);
 sec = zeros(n,2);
 
-%empty initialization
+% initialization
 tableWithoutOutput = [];
 tableData = [];
 nImages = [];
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% extract DICOM images and info
 if ~PARAMETRIC_IMAGES_TO_ANALYZE
     for i=1:n
@@ -44,7 +46,8 @@ if ~PARAMETRIC_IMAGES_TO_ANALYZE
         sec(i,1) = H+M+S;
         sec(i,2) = i;
     end
-
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% sort the images based on the acquisition time
     sec = sortrows(sec);
 
@@ -54,9 +57,11 @@ if ~PARAMETRIC_IMAGES_TO_ANALYZE
 else 
     for i=1:n
         if i<10
-            images{i} = imread([folderPath '0' num2str(i) '.png']);
+%             images{i} = imread([folderPath '0' num2str(i) '.png']);
+            images{i} = imread(strcat(folderPath,'0',num2str(i),'.png'));
         else
-            images{i} = imread([folderPath num2str(i) '.png']);
+%             images{i} = imread([folderPath num2str(i) '.png']);
+            images{i} = imread(strcat(folderPath,num2str(i),'.png'));
         end
         sec(i,1) = 0;
         sec(i,2) = i;
@@ -64,6 +69,8 @@ else
 end
 sortInfo = cell(size(info));
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% get corresponding index of the subfold
 pm_index = 1; % for SE000004 == Cerebral Blood Flow (CBF)
 if strcmp(subfold, subfolds(end-2)) % for SE000005 == Cerebral Blood Volume (CBV)
     pm_index = 2;
@@ -75,11 +82,14 @@ elseif strcmp(subfold, subfolds(1)) % SE000003: Enhanced image
     pm_index = 5;
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% for every image
 for x=1:size(sec,1)
     newInd = sec(x,2);
     sortInfo{x} = info{newInd};
     sortImages{pm_index,x} = images{newInd};
 
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% save the image
     name = num2str(x);
     if length(name) == 1
@@ -93,16 +103,21 @@ for x=1:size(sec,1)
     if ~ exist(strcat(saveFolder, patient),'dir')
         mkdir(strcat(saveFolder, patient));
     end
+    if ~ exist(strcat(saveFolder, patient,"\",dayFold),'dir')
+        mkdir(strcat(saveFolder, patient,"\",dayFold));
+    end
     
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% save the parametric map
     if SAVE_PAR_MAPS
         % create the folder if it doesn't exits
-        if ~ exist(strcat(saveFolder, patient, '/', subfold),'dir')
-            mkdir(strcat(saveFolder, patient, '/', subfold));
+        if ~ exist(strcat(saveFolder, patient, "\", dayFold, "\", subfold),'dir')
+            mkdir(strcat(saveFolder, patient, "\", dayFold, "\", subfold));
         end
-        imwrite(sortImages{pm_index,x}, strcat(saveFolder, patient, '/', subfold, '/', name, '.png'));
+        imwrite(sortImages{pm_index,x}, strcat(saveFolder, patient, "\",dayFold, "\", subfold, "/", name, ".png"));
     end
 
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     if subfold == subfolds(1)
         %% extract the shape of the brain slice from the grayscale image
         T = rgb2gray(sortImages{pm_index,x});
@@ -114,7 +129,7 @@ for x=1:size(sec,1)
 
         blackWhiteMask = 255 * uint8(~blackWhiteMask);
 
-        if count==1
+        if count==1 % initialize the masks
             combinedResearchCoreMaks{x} = uint8(zeros(size(blackWhiteMask)));
             combinedResearchPenumbraMaks{x} = uint8(zeros(size(blackWhiteMask)));
         end
@@ -134,7 +149,7 @@ for x=1:size(sec,1)
 
         for indexName=1:numel(parametricMaps)
             mapName = parametricMaps{indexName};
-
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %% find the infarcted regions based on the folder and the values 
             mask = false(size(sortImages{pm_index,x},1), size(sortImages{pm_index,x},2));
             percentage = 0;
@@ -143,9 +158,8 @@ for x=1:size(sec,1)
             isPenumbra = 0;
 
             if subfold == subfolds(2) 
-%                 blackWhiteMask = imbinarize(rgb2gray(sortImages{pm_index,x}));
-%                 skullMasks{1,x} = blackWhiteMask .* skullMasks{1,x};
-                
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                %% CBF 
                 imageCBF{x} = uint8(sortImages{pm_index,x});
                 imageCBF{x}(:,colorbarPointY:end, :) = 0; % remove colorbar 
 
@@ -167,9 +181,8 @@ for x=1:size(sec,1)
                     end
                 end
             elseif subfold == subfolds(end-2) 
-%                 blackWhiteMask = imbinarize(rgb2gray(sortImages{pm_index,x}));
-%                 skullMasks{2,x} = blackWhiteMask .* skullMasks{2,x};
-                
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                %% CBV
                 imageCBV{x} = uint8(sortImages{pm_index,x});
 
                 if contains(mapName, 'MTT')
@@ -206,10 +219,9 @@ for x=1:size(sec,1)
                     end
                 end
             elseif subfold == subfolds(end-1)
-%                 blackWhiteMask = imbinarize(rgb2gray(sortImages{pm_index,x}));
-%                 skullMasks{3,x} = blackWhiteMask .* skullMasks{3,x};
-                
                 if contains(mapName, 'TMax')
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    %% TMAX
                     imageTMAX{x} = uint8(sortImages{pm_index,x});
                     imageTMAX{x}(:,colorbarPointY:end, :) = 0; % remove colorbar 
 
@@ -223,9 +235,8 @@ for x=1:size(sec,1)
                     end
                 end
             elseif subfold == subfolds(end-1) 
-%                 blackWhiteMask = imbinarize(rgb2gray(sortImages{pm_index,x}));
-%                 skullMasks{4,x} = blackWhiteMask .* skullMasks{4,x};
-                
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                %% TTP
                 if contains(mapName, 'TTP')
                     imageTTP{x} = uint8(sortImages{pm_index,x});
                     imageTTP{x}(:,colorbarPointY:end, :) = 0; % remove colorbar 
@@ -258,10 +269,11 @@ for x=1:size(sec,1)
                 end
             end
 
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %% extracting the infarcted areas (penumbra & core)
             startingColorPixelX = colorbarPointBottomX - int16(((colorbarPointBottomX-colorbarPointTopX)/100)*percentage);
 
-            if isCore
+            if isCore % core region
                 if percentage==0
                     tryImage{x} = zeros(size(sortImages{pm_index,x}));
                     retMask = zeros(size(sortImages{pm_index,x},1), size(sortImages{pm_index,x},2));
@@ -286,7 +298,7 @@ for x=1:size(sec,1)
                 coreImage{x} = imfuse(coreImage{x}, tryImage{x}, 'blend');
                 totalCoreMask{x} = logical(totalCoreMask{x}) & logical(retMask);
 
-            elseif isPenumbra
+            elseif isPenumbra % penumnbra region
                 if percentage==0
                     tryImage{x} = zeros(size(sortImages{pm_index,x}));
                     retMask = zeros(size(sortImages{pm_index,x},1), size(sortImages{pm_index,x},2));
@@ -314,24 +326,32 @@ for x=1:size(sec,1)
             end
         end
 
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         if subfold == subfolds(end) % last folder  
             strpercentage = perce;
-            if strpercentage<10
-                strpercentage = strcat("00", num2str(perce));
-            elseif strpercentage<100
-                strpercentage = strcat("0", num2str(perce));
-            else 
-                strpercentage = num2str(perce);
+            if strpercentage==-1
+                new_suffix = suffix;
+            else
+                if strpercentage<10
+                    strpercentage = strcat("00", num2str(perce));
+                elseif strpercentage<100
+                    strpercentage = strcat("0", num2str(perce));
+                else 
+                    strpercentage = num2str(perce);
+                end
+                new_suffix = strcat(suffix, "_perc_", strpercentage);
             end
-            new_suffix = strcat(suffix, "_perc_", strpercentage);
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %% get the statistical information from the image
             if SUPERVISED_LEARNING % only if we are doing supervised learning 
-                stats = statisticalInfo(stats, new_suffix, totalPenumbraMask{x}, totalCoreMask{x}, MANUAL_ANNOTATION_FOLDER, patient, x, penumbra_color, core_color, flag_PENUMBRACORE);
+                stats = statisticalInfo(stats, new_suffix, totalPenumbraMask{x}, totalCoreMask{x}, MANUAL_ANNOTATION_FOLDER, patient, dayFold, x, penumbra_color, core_color, flag_PENUMBRACORE);
             end
         end
     end
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% go inside here only if the mapname == cluster (use only for the ML approach
 if subfold == subfolds(end) && strcmp("cluster", mapName) % last folder
     if strcmp(research.(mapName), "yes")
         [tableData,nImages] = clusterImagesWithRealValues(skullMasks, sortImages, ...

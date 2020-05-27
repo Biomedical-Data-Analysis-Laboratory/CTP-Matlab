@@ -1,32 +1,39 @@
-function [predictions,statsClassific] = mainExtractionFunc(patients,perfusionCTFolder,MANUAL_ANNOTATION_FOLDER,SAVED_MODELS_FOLDER,saveFolder,subsavefolder,subfolds,SHOW_IMAGES,LOAD_AND_PREDICT_PATIENT,workspaceFolder,appUIFIGURE)
-%MAINEXTRACTIONFUNC Summary of this function goes here
-%   Detailed explanation goes here
+function [predictions,statsClassific] = mainExtractionFunc(patients,researchesValues,perfusionCTFolder,MANUAL_ANNOTATION_FOLDER,SAVED_MODELS_FOLDER,saveFolder,subsavefolder,subfolds,constants,workspaceFolder,appUIFIGURE)
+%MAINEXTRACTIONFUNC Extraction of the information of the patients 
+%   Function that performs different steps:
+%       0) for each researchesValues: 
+%       1) extract the parametric maps calling getInfoFromSubfold function
+%       2) predict the information with predictWithUnsupervisedLearning
+%           function if the flag is set 
+%       3) predict ALL the patient with a supervised learning and a
+%           cross-validation approach if the flag is set
 
-if nargin<7
-    LOAD_AND_PREDICT_PATIENT = 0;
-    if nargin<8
+if nargin<11
+	appUIFIGURE = uifigure;
+    if nargin<10
         workspaceFolder = saveFolder;
-        if nargin<9
-            appUIFIGURE = uifigure;
-        end
     end
 end
 
 wb = uiprogressdlg(appUIFIGURE,'Title','Please Wait',...
     'Message','Start analyzing patients...');
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% CONSTANTS
-PARAMETRIC_IMAGES_TO_ANALYZE = 1; % to read the proper images (parametric maps images (png) or DICOM files)
-SAVE_PAR_MAPS = 0; % flag to save the parametric maps
-SAVE_TRESHOLDING = 0; % flag to save the thresholding values
-flag_PENUMBRACORE = 1; % to run also the penumbra-core statistics
-DIFFERENT_PERCENTAGES = 0; % use only for the ROC curve
-SUPERVISED_LEARNING = 0; % flag for the supervised learning (with or without the ground truth)
-FAKE_MIP = 0; % use to just ignore the old infarction presented in the MIP (maximum intensity projection) images
-SUFFIX_RES = 'tree'; % 'SVM' // 'tree' // 'SVM_tree' 
-USE_UNIQUE_MODEL = true; % for creating a unque model and not passing through a cross-validation over the patiens
+SHOW_IMAGES = constants.SHOW_IMAGES; % show the images during the execution of the function
+LOAD_AND_PREDICT_PATIENT = constants.LOAD_AND_PREDICT_PATIENT; % load and predict a single patient at the time
+RUN_EXTRACTION_AGAIN = constants.RUN_EXTRACTION_AGAIN; % run the extraction even if the corresponding folder ALREADY contains the values
+PARAMETRIC_IMAGES_TO_ANALYZE = constants.PARAMETRIC_IMAGES_TO_ANALYZE; % to read the proper images (parametric maps images (png) or DICOM files)
+SAVE_PAR_MAPS = constants.SAVE_PAR_MAPS; % flag to save the parametric maps
+SAVE_TRESHOLDING = constants.SAVE_TRESHOLDING; % flag to save the thresholding values
+flag_PENUMBRACORE = constants.flag_PENUMBRACORE; % to run also the penumbra-core statistics
+DIFFERENT_PERCENTAGES = constants.DIFFERENT_PERCENTAGES; % use only for the ROC curve
+SUPERVISED_LEARNING = constants.SUPERVISED_LEARNING; % flag for the supervised learning (with or without the ground truth)
+FAKE_MIP = constants.FAKE_MIP; % use to just ignore the old infarction presented in the MIP (maximum intensity projection) images
+SUFFIX_RES = constants.SUFFIX_RES; % 'SVM' // 'tree' // 'SVM_tree' 
+USE_UNIQUE_MODEL = constants.USE_UNIQUE_MODEL; % for creating a unque model and not passing through a cross-validation over the patiens
 
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% initialize variables 
 % flag for the leave-one-out prediction (predict with other models!)
 totalTableData =  table();
@@ -40,12 +47,13 @@ statsClassific = table();
 MODELS_PENUMBRA = cell(1,numel(patients));
 MODELS_CORE = cell(1,numel(patients));
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% load the saved stats
 % if exist(strcat(SAVED_MODELS_FOLDER,"statsClassific_2steps_",SUFFIX_RES,".mat"),'file')
 %     load(strcat(SAVED_MODELS_FOLDER,"statsClassific_2steps_",SUFFIX_RES,".mat"));
 % end
 
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% colors index
 colorbarPointTopX = 129;
 colorbarPointBottomX = 384;
@@ -53,26 +61,9 @@ colorbarPointY = 436;
 penumbra_color = 76;
 core_color = 150;
 
-%% values for each parametric map [perc(%), up/down, core/penumbra]
-
-researchesValues = containers.Map;
-researchesValues(strcat('superpixels2steps_',SUFFIX_RES)) = struct('cluster',"yes"); % no need of thresholding values!
-
-% researchesValues('Cereda_2015') = struct('CBF', [38, "down", "core", ""], 'TMax', [33, "up", "penumbra", ""]);
-% researchesValues('Wintermark_2006') = struct('CBV', [33, "down", "core", ""]); %, 'MTT', [6, "up", "penumbra"]);
-% researchesValues('Ma_Cambell_2019') = struct('CBF', [30, "down", "core", ""], 'TMax', [50, "up", "penumbra", ""]);
-% % % researchesValues('Bivard_Lin_2014') = struct('CBF', [30, "down", "core"], 'TMax', [50, "up", "penumbra"]);
-% % 
-% researchesValues('Shaefer_2014') = struct('CBF', [15, "down", "core", ""], 'CBV', [30, "down", "core", ""]);
-% % 
-% % % researchesValues('Bivard_2014') = struct('CBF', [50, "down", "core"], 'TTP', [75, "up", "penumbra"]);
-% researchesValues('Cambell_2012') = struct('CBF', [31, "down", "core", 10], 'TTP', [20, "up", "core", ""], 'TMax', [50, "up", "penumbra", ""]);
-% researchesValues('Murphy_2006') = struct('CBF', [13.3, "down", "core", ""], 'CBV', [18.6, "down", "core", 5], 'CBF_2', [25, "down", "penumbra", ""], 'CBV_2', [36, "down", "penumbra", 10]);
-% % % researchesValues('Shaefer_2006') = struct('CBF', [17.92, "down", "penumbra"], 'CBV', [24.5, "down", "core"]);
-% % % researchesValues('Shaefer_2006_2') = struct('CBF', [8.8, "down", "core"], 'CBV', [49, "down", "penumbra"]);
-% % % researchesValues('Bivard') = struct('CBF', [50, "down", "core"], 'TTP', [75, "down", "penumbra"]);
-% % %researchesValues('COMB_Wintermark_Shaefer') = struct('CBV', [24.5, "down", "core"], 'CBF', [30, "down", "penumbra"], 'TMax', [50, "up", "penumbra"], 'TTP', [75, "up", "penumbra"]);
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% for each suffix 
 for suff = researchesValues.keys
     count = 0;
@@ -82,7 +73,10 @@ for suff = researchesValues.keys
     parametricMaps = fieldnames(research);
     
 %     if exist(strcat(saveFolder,"totalTableData.mat"),'file')==0
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %% 0^ STEP
     %% for each patient
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     for p=1:numel(patients)
         
         percToLoop = 0:10:100;
@@ -103,6 +97,8 @@ for suff = researchesValues.keys
         combinedResearchCoreMaks = cell(1,50); % initialize the combined core mask
         combinedResearchPenumbraMaks = cell(1,50); % initialize the combined penumbra mask
 
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % for each day folder
         for dayFold = dir(strcat(perfusionCTFolder, patient))'
         if ~strcmp(dayFold.name, '.') && ~strcmp(dayFold.name, '..') 
         n_fold = n_fold + 1;
@@ -111,7 +107,7 @@ for suff = researchesValues.keys
         
         % count the subfolders inside the dayFold, sutracting the
         % "Annotations" and "Original" folders from the count and if the
-        % number is lless than the number of the initial subfolds, do nothing
+        % number is less than the number of the initial subfolds, do nothing
         foldsInsideDayFold = struct2cell(dir(strcat(dayFold.folder,'/',dayFold.name)));
         foldsInsideDayFold = foldsInsideDayFold(1,3:end);
         subsavefoldcount = 0;
@@ -122,9 +118,11 @@ for suff = researchesValues.keys
             end
         end
         if (numel(foldsInsideDayFold) - subsavefoldcount) < numel(subfolds)
+            disp("Number of folders not correct! Skip this one...");
             continue
         end
         
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %% for each subfolder of parametric maps   
         for s=1:numel(subfolds)
             subfold = subfolds(s);
@@ -139,7 +137,6 @@ for suff = researchesValues.keys
                 number_of_slice_per_pm = n; % set it for later comparison
             else
                 if number_of_slice_per_pm~=n
-                    % at the moment it's only happening with CTP_01_069...
                     disp("number of slices not equal in the PM");
                     break
                 end
@@ -148,7 +145,9 @@ for suff = researchesValues.keys
             savedAnnotationFolderPath = strcat(perfusionCTFolder,patient,'/',dayFold.name,intermediateFold,subsavefolder{2});
             saved_n = numel(dir(savedAnnotationFolderPath))-2;
 
-            if (saved_n/2) < n % nothing already saved in the original folder
+             % nothing already saved in the original folder or the
+             % RUN_EXTRACTION_AGAIN is set == true
+            if (saved_n/2) < n || RUN_EXTRACTION_AGAIN
                 %% initialize the cells if we are cecking the grayscale image 
                 if subfold == subfolds(1)
                     tryImage = cell(1,n); % initialize the ground truth cell
@@ -167,14 +166,17 @@ for suff = researchesValues.keys
                     skullMasks = cell(5,n);
                 end
 
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                %% 1^ STEP
                 %% get the information of the various map for a specific subfolder
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 [combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks,penumbraImage,...
                 totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats,tableData,nImages] = ...
                     getInfoFromSubfold(subfold,subfolds,PARAMETRIC_IMAGES_TO_ANALYZE,research,folderPath,patient,n_fold,...
                     MANUAL_ANNOTATION_FOLDER,saveFolder,colorbarPointY,parametricMaps,SUPERVISED_LEARNING,FAKE_MIP,...
                     suffix,colorbarPointBottomX,colorbarPointTopX,penumbra_color,core_color,flag_PENUMBRACORE,SAVE_PAR_MAPS,count,perce, ...
                     combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks, ...
-                    penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats);
+                    penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats,dayFold.name);
 
                 if subfold == subfolds(end)
                     totalNImages{1,p} = nImages;
@@ -209,6 +211,10 @@ for suff = researchesValues.keys
                             continue
                         end
                         
+                        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                        %% 2^ STEP
+                        %% predict the information using an unsupervised learning approach
+                        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                         [predictions,statsClassific,~] = predictWithUnsupervisedLearning(p,pIndex,suffix,tableData,predictionMasks,...
                             MANUAL_ANNOTATION_FOLDER,penumbra_color,core_color,SUPERVISED_LEARNING,totalNImages,...
                             statsClassific,patientSubFold,saveFolder,subsavefolder,SHOW_IMAGES,...
@@ -235,15 +241,17 @@ for suff = researchesValues.keys
 
             end
         end
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %% Save the thresholding images
+            if SAVE_TRESHOLDING
+                saveThresholdingImages(saveFolder,patient,suffix,research,tryImage,...
+                    MANUAL_ANNOTATION_FOLDER,penumbraImage,coreImage,penumbra_color,core_color,...
+                    totalCoreMask,totalPenumbraMask,saveCore,savePenumbra,dayFold.name);    
+            end
         end
         end
 
-        %% Save the thresholding images
-        if SAVE_TRESHOLDING
-            saveThresholdingImages(saveFolder,patient,suffix,research,tryImage,...
-                MANUAL_ANNOTATION_FOLDER,penumbraImage,coreImage,penumbra_color,core_color,...
-                totalCoreMask,totalPenumbraMask,saveCore,savePenumbra);    
-        end
+        
         toc
         end
         
@@ -266,12 +274,10 @@ for suff = researchesValues.keys
     save(strcat(workspaceFolder,"totalNImages.mat"), 'totalNImages', '-v7.3');
     save(strcat(workspaceFolder,"predictionMasks.mat"), 'predictionMasks', '-v7.3');
     
-%     else
-%     
-%         load(strcat(saveFolder,"totalTableData.mat"));
-%         load(strcat(saveFolder,"totalNImages.mat"));
-%         load(strcat(saveFolder,"predictionMasks.mat"));
-%     end
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %% 3^ STEP
+    %% predict the information using a supervised (or unsupervised) learning approach + cross-validation
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     if isfield(research, "cluster") && strcmp(research.cluster, "yes") && ~LOAD_AND_PREDICT_PATIENT
         
         wb.Value = (p/numel(patients))/2;

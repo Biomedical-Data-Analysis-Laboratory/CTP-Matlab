@@ -33,7 +33,7 @@ for patientFold = dir(app.patientspath)'
         wb.Message = strcat("Analyzing patient: ", num2str(count), "/", num2str(n_patients));
         count = count + 1;
         
-        for subfold = dir(patientFold.folder + "/" + patientFold.name)'
+       for subfold = dir(patientFold.folder + "/" + patientFold.name)'
             processMIP = false; % flag to process MIP folder only if there are annotations
             if ~strcmp(subfold.name, '.') && ~strcmp(subfold.name, '..')
                 for pm_fold = dir(subfold.folder + "/" + subfold.name)'
@@ -93,9 +93,13 @@ for patientFold = dir(app.patientspath)'
                                         new_annotationImage_name = strcat(app.mainSavepath,finalizeFolder,patientFold.name,"/",subfold.name,"/",id);
                                         
                                         if isfile(new_annotationImage_name)
-                                            mip_img = ~imfill(logical(rgb2gray(imread(strcat(image.folder+"/"+image.name)))),'holes');
+                                            tmp_img = rgb2gray(imread(strcat(image.folder+"/"+image.name)));
+                                            tmp_img(tmp_img==tmp_img(1,1)) = 0; % put all the element equal the right-top pixel = 0
+                                            mip_img = ~imfill(logical(tmp_img),'holes');
                                             mip_img(:,colorbarPointY:end) = 255; % remove F in the bottom right
-                                        
+                                            % remove the text in the top of the image (if exists)
+                                            mip_img = ~bwareaopen(~mip_img, 60);
+                                            
                                             blank_img = imread(new_annotationImage_name); 
                                             % change the color the part where
                                             % penumbra and core are oerlapping

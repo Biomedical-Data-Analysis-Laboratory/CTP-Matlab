@@ -47,7 +47,7 @@ matlabFolder = strcat(folder, 'MATLAB_CODE/');
 % args.previousNumPatiens = 11;
 %% -------------------------------------------------------------
 %% SUS 2020_v2
-args.patients = double(130:155);
+args.patients = [22,44,64,65,66,68,69,71,72,73,74,111,116,118,120,122,123,124,125,126,140];
 args.directory = 'D:\SUS2020_v2\';
 register_folder = strcat(USER, 'Desktop\SUS2020_v2\');
 args.annotatedImagesFolder = "";
@@ -61,7 +61,7 @@ args.newIDFormat = true;
 
 %% -------------------------------------------------------------
 %% flags
-args.INITIAL_STEP = 3;
+args.INITIAL_STEP = 2;
 args.save = 1;
 args.SAVE_INTERMEDIATE_STEPS = false;
 %% -------------------------------------------------------------

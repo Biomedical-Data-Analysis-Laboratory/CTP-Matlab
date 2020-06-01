@@ -2,6 +2,7 @@ function AUC_table = plotROC(researchesValues,stats,AUC_table,flag)
 %PLOTROC Summary of this function goes here
 %   Detailed explanation goes here
     
+h = zeros(1,researchesValues.Count+1);
 
 % coordinate for mJNet_DA_ADAM_VAL5 (avg)
 % (X,Y) = (1-specificity, sensitivity)
@@ -10,9 +11,9 @@ if flag=="penumbra"
     Y_p_adam = [0, 0.625, 0.749, 0.818, 0.864, 0.885, 0.895, 0.906, 0.919, 0.939, 1];
     X_p_sgd = [1-1, 1-0.987, 1-0.99, 1-0.974, 1-0.966, 1-0.963, 1-0.958, 1-0.952, 1-0.943, 1-0.924, 1-0];
     Y_p_sgd = [0, 0.726, 0.815, 0.862, 0.911, 0.931, 0.939, 0.947, 0.957, 0.969, 1];
-    plot(X_p_adam, Y_p_adam, "-", 'DisplayName', "mJNet (ADAM)", "LineWidth", 3, "Color", "red");
+%     plot(X_p_adam, Y_p_adam, "-", 'DisplayName', "mJNet (ADAM)", "LineWidth", 3, "Color", "red");
     hold on
-    plot(X_p_sgd, Y_p_sgd, "-", 'DisplayName', "mJNet (SGD)", "LineWidth", 3, "Color", "blue");
+    h(1) = plot(X_p_sgd, Y_p_sgd, "-", 'DisplayName', "mJNet (SGD)", "LineWidth", 3, "Color", "blue");
     %plot(1-0.88, 0.80, "-s", 'DisplayName', "ADAM longJ penumbra w/o back")
     
     auc_adam_nb = abs(trapz(X_p_adam,Y_p_adam));
@@ -29,9 +30,9 @@ elseif flag=="core"
 %     X_c_sgd = [1-1, 1-0.989, 1-0.982, 1-0.974, 1-0.962, 1-0.966, 1-0.923, 1-0.901, 1-0.878, 1-0.839, 1-0];
     Y_c_sgd = [0, 0.368, 0.502, 0.605, 0.69, 0.881, 0.91, 0.928, 0.952, 1];
 %     Y_c_sgd = [0, 0.368, 0.502, 0.605, 0.69, 0.578, 0.881, 0.91, 0.928, 0.952, 1];
-    plot(X_c_adam, Y_c_adam, "-", 'DisplayName', "mJNet (ADAM)", "LineWidth", 3, "Color", "red");
+%     plot(X_c_adam, Y_c_adam, "-", 'DisplayName', "mJNet (ADAM)", "LineWidth", 3, "Color", "red");
     hold on
-    plot(X_c_sgd, Y_c_sgd, "-", 'DisplayName', "mJNet (SGD)", "LineWidth", 3, "Color", "blue");
+    h(1) = plot(X_c_sgd, Y_c_sgd, "-", 'DisplayName', "mJNet (SGD)", "LineWidth", 3, "Color", "blue");
     %plot(1-0.97, 0.85, "-s", 'DisplayName', "ADAM longJ core w/o back")
     
     auc_adam_nb = abs(trapz(X_c_adam,Y_c_adam));
@@ -40,7 +41,7 @@ elseif flag=="core"
     AUC_table = [AUC_table; {strcat("sgd", '_', flag), auc_sgd_nb}];
 end
 
-
+count = 2;
 for suff = researchesValues.keys
     suffix = suff{1};
     
@@ -62,8 +63,6 @@ for suff = researchesValues.keys
         rowsTable = stats(indices,:);
         if processIT
             if flag=="penumbra"
-        %         X_p = 1-rowsTable.specificity_p;
-        %         Y_p = rowsTable.sensitivity_p;
                 X_p_nb = 1-rowsTable.specificity_p_nb;
                 Y_p_nb = rowsTable.sensitivity_p_nb;
 
@@ -79,26 +78,18 @@ for suff = researchesValues.keys
                 end
 
                 if isUP==1
-        %             X_p([1 end]) = X_p([end 1]);
-        %             Y_p([1 end]) = Y_p([end 1]);
                     X_p_nb([1 end]) = X_p_nb([end 1]);
                     Y_p_nb([1 end]) = Y_p_nb([end 1]);
                 end
 
                 suff_for_legend = strrep(suffix, "_", " ");
                 suff_for_legend = extractBefore(suff_for_legend, " ");
-        %         plot(X_p,Y_p,"-o", 'DisplayName',suff_for_legend)
-              %  hold on
-                plot(X_p_nb,Y_p_nb,"-", 'DisplayName',strcat(suff_for_legend, " "), "LineWidth", 2)
-              %  hold on
+                h(count) = plot(X_p_nb,Y_p_nb,"-", 'DisplayName',strcat(suff_for_legend, " "), "LineWidth", 2)
 
         %         auc = trapz(X_p,Y_p);
                 auc_adam_nb = abs(trapz(X_p_nb,Y_p_nb));
-        %         AUC_table = [AUC_table; {strcat(suffix, '_', flag), auc, auc_nb}];
                 AUC_table = [AUC_table; {strcat(suffix, '_', flag), auc_adam_nb}];
             elseif flag=="core"
-        %         X_c = 1-rowsTable.specificity_c;
-        %         Y_c = rowsTable.sensitivity_c;
                 X_c_nb = 1-rowsTable.specificity_c_nb;
                 Y_c_nb = rowsTable.sensitivity_c_nb;
 
@@ -117,41 +108,38 @@ for suff = researchesValues.keys
                 end
                 
                 if isUP==1
-        %             X_c([1 end]) = X_c([end 1]);
-        %             Y_c([1 end]) = Y_c([end 1]);
                     X_c_nb([1 end]) = X_c_nb([end 1]);
                     Y_c_nb([1 end]) = Y_c_nb([end 1]);
                 end
 
                 suff_for_legend = strrep(suffix, "_", " ");
                 suff_for_legend = extractBefore(suff_for_legend, " ");
-        %         plot(X_c,Y_c,"-o",'DisplayName',suff_for_legend)
-            %    hold on
-                plot(X_c_nb,Y_c_nb,"-",'DisplayName',strcat(suff_for_legend," "), "LineWidth", 2)
-             %   hold on
+                h(count) = plot(X_c_nb,Y_c_nb,"-",'DisplayName',strcat(suff_for_legend," "), "LineWidth", 2)
 
         %         auc = trapz(X_c,Y_c);
                 auc_adam_nb = abs(trapz(X_c_nb,Y_c_nb));
-        %         AUC_table = [AUC_table; {strcat(suffix, '_', flag), auc, auc_nb}];
                 AUC_table = [AUC_table; {strcat(suffix, '_', flag), auc_adam_nb}];
             end
+            
+            count = count + 1;
         end
 
         legend('Location','southeast','NumColumns',2)
         title(strcat("ROC - ", flag));
         xlabel('False positive rate'); ylabel('True positive rate');
-        % hold on
-        % hold off
-        % legend('off')
     end
 end
 
 if flag=="core"
-    plot(1-0.65, 0.91, "x", "DisplayName", "Kasasbeh", "LineWidth", 2);
+    h(end-1) = plot(1-0.65, 0.91, "x", "DisplayName", "Kasasbeh", "LineWidth", 2);
 end
 
-plot([0,0.5, 1], [0,0.5, 1], "--", "DisplayName", "", "LineWidth", 1, "Color",  "black");
-hold off
+h(end) = plot([0,0.5, 1], [0,0.5, 1], "--", "DisplayName", "", "LineWidth", 1, "Color",  "black");
+
+h(h==0) = [];
+legend(h(1:end-1));
+%% put a breakpoint here for saving both the figures!
+close
 
 
 

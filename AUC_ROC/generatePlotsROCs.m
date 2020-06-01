@@ -5,13 +5,13 @@ close all;
 % USER = '/Users/lucatomasetti/';
 %% WINDOWS 
 USER = 'C:\Users\';
-USER = strcat(USER, 'Luca\');
-% USER = strcat(USER, '2921329\');
+% USER = strcat(USER, 'Luca\');
+USER = strcat(USER, '2921329\');
 
 %% CONSTANTS
 PARAMETRIC_IMAGES_TO_ANALYZE = 1; % to read the proper images (parametric maps images (png) or DICOM files)
 HOME = strcat(USER, 'OneDrive - Universitetet i Stavanger/');
-perfusionCTFolder = strcat(HOME, 'PhD/Patients/');
+perfusionCTFolder = strcat(HOME, 'Luca/PhD/Patients/');
 
 if PARAMETRIC_IMAGES_TO_ANALYZE
     perfusionCTFolder = strcat(perfusionCTFolder, 'extracted_info/');

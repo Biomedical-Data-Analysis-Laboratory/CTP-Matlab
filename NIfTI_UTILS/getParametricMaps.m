@@ -13,7 +13,7 @@ flag = 'TRAINING/'; % 'TESTING/'
 HOME = strcat(USER, 'OneDrive - Universitetet i Stavanger/');
 folder = strcat(HOME, 'PhD/');
 matlabFolder = strcat(folder, 'MATLAB_CODE/');
-ISLES2018Folder = strcat(USER, 'Desktop/ISLES2018/');
+ISLES2018Folder = "D:/ISLES2018/";
 
 args.directory = strcat(ISLES2018Folder, flag); 
 args.patients = double(1:63);

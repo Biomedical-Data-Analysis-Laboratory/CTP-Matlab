@@ -2,12 +2,12 @@ function ImageRegistered = extractNIfTIImagesISLES2018(directory, SAVE, workspac
 %EXTRACTNIFTIIMAGES Summary of this function goes here
 %   Detailed explanation goes here
     
-    if nargin < 6
-        SAVE_IMAGES = 0;
+    if nargin < 8
+        groundTruth_folder = "";
         if nargin < 7
             save_folder = "";
-            if nargin < 8
-                groundTruth_folder = "";
+            if nargin < 6
+                SAVE_IMAGES = 0;
             end
         end
     end
@@ -21,8 +21,6 @@ function ImageRegistered = extractNIfTIImagesISLES2018(directory, SAVE, workspac
     mappingFile = textscan(mappingFileID,['%s' equalSign '%s' '%u']);
        
     for elem=1:numel(mappingFile{1,1})
-%         id_pat = mappingFile{1,1}{elem};
-%         id_pat = str2double(id_pat(end-3:end-2));
         suffix_folder = strcat(mappingFile{1,2}{elem},"_", num2str(mappingFile{1,3}(elem)));
         id_pat = mappingFile{1,3}(elem); % IN ORDER NOT TO COMPACT THEM TOGETHER
         

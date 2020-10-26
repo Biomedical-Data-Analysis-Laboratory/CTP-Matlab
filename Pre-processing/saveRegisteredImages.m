@@ -1,17 +1,27 @@
-function saveRegisteredImages(NewImageRegistered, saveRegisteredFolder, patients, suffix, previousNumPatiens, newIDFormat, directory, GROUP)
+function saveRegisteredImages(NewImageRegistered, saveRegisteredFolder, patients, suffix, ...
+    previousNumPatiens, newIDFormat, directory, SAVE_AS_TIFF, GROUP)
 %SAVEREGISTEREDIMAGES Summary of this function goes here
 %   Detailed explanation goes here
 
-    if nargin < 8
+    if nargin < 9
         GROUP = 1;
+    end
+    if nargin < 8
+        SAVE_AS_TIFF = false;
+    end
+    if nargin < 7
+        directory = "";
+    end
+    if nargin < 6
+        newIDFormat = false;
     end
 
     for p=patients
-        if strcmp(directory{1,p},"") % don't save if there is no folder path
-            continue
-        end
-        
+        disp(strcat("Patient: ", num2str(p)));
         if newIDFormat
+            if strcmp(directory{1,p},"") % don't save if there is no folder path
+                continue
+            end
             newFolder = extractBetween(directory{1,p}, strfind(directory{1,p}, "CTP_"), strfind(directory{1,p}, "CTP_")+9);
         else
             if (p+previousNumPatiens)<10
@@ -29,7 +39,7 @@ function saveRegisteredImages(NewImageRegistered, saveRegisteredFolder, patients
 % %                 if ~strcmp(fold.name, '.') && ~strcmp(fold.name, '..') && ...
 % %                         ~strcmp(fold.name, 'Tmax') && ~strcmp(fold.name, 'CBF') && ~strcmp(fold.name, 'MTT') && ...
 % %                         ~strcmp(fold.name, 'CBV') && ~strcmp(fold.name, 'OT')
-% %                     rmdir(strcat(fold.folder,"\",fold.name,"\"),'s');
+% %                     rmdir(strcat(fold.folder,"/",fold.name,"/"),'s');
 % %                 end
 % %             end
             
@@ -43,13 +53,13 @@ function saveRegisteredImages(NewImageRegistered, saveRegisteredFolder, patients
             end
             
             for k=1:n_slices
-                name = num2str(k);
-                if length(name) == 1
-                    name = strcat('0', name);
+                slice = num2str(k);
+                if length(slice) == 1
+                    slice = strcat('0', slice);
                 end
                 
                 if GROUP
-                    mkdir(subFolder, char(name));
+                    mkdir(subFolder, char(slice));
                     count = length(NewImageRegistered{p}{k});
                 end
                 
@@ -64,12 +74,30 @@ function saveRegisteredImages(NewImageRegistered, saveRegisteredFolder, patients
                         tmp_suffix = strcat("_",suffix);
                     end
                     
-                    if GROUP
-                        image_name = char(strcat(subFolder, name, "/", index, tmp_suffix, ".png"));
+                    if ~SAVE_AS_TIFF
+                        if GROUP
+                            image_name = char(strcat(subFolder, slice, "/", index, tmp_suffix, ".png"));
+                        else
+                            image_name = char(strcat(subFolder, index, tmp_suffix, ".png"));
+                        end
+                        
                         imwrite(mat2gray(NewImageRegistered{p}{k}{i}),image_name);
                     else
-                        image_name = char(strcat(subFolder, index, tmp_suffix, ".png"));
-                        imwrite(mat2gray(NewImageRegistered{p}{i}),image_name);
+                        % write the time series of images as a .tiff image
+                        % to maintain the uint16 format
+                        if GROUP
+                            image_name = char(strcat(subFolder, slice, "/", index, tmp_suffix, ".tiff"));
+                        else
+                            image_name = char(strcat(subFolder, index, tmp_suffix, ".tiff"));
+                        end
+                        
+                        img = im2uint16(NewImageRegistered{p}{k}{i});
+                        div = 1;
+                        if length(unique(img))<1000 % only black pixels
+                            div = 256;
+                        end
+
+                        imwrite(img./div,image_name);
                     end
                 end
             end

@@ -134,7 +134,7 @@ function [information, informationValues] = getDICOMinfo(mainFolder, field, patF
                 for dicomFile = DICOMinfoFold'
                 if ~strcmp(dicomFile.name, '.') && ~strcmp(dicomFile.name, '..')    
                
-                if ~contains(dicomFile.name, '._')
+                if ~contains(dicomFile.name, '._') && ~contains(dicomFile.name, '.DS_Store')
                     info = dicominfo(fullfile(dicomFile.folder, dicomFile.name));
 
                     % information about the patient (they should be anonymous)
@@ -207,7 +207,7 @@ function [information, informationValues] = getDICOMinfo(mainFolder, field, patF
 
                                 flagStartZero = 0;
                                 for el = dir(dicomFile.folder)'
-                                    if ~strcmp(el.name, '.') && ~strcmp(el.name, '..')
+                                    if ~strcmp(el.name, '.') && ~strcmp(el.name, '..') && ~contains(el.name, '._')  
                                         info = dicominfo(fullfile(dicomFile.folder, el.name));
                                         image = dicomread(fullfile(dicomFile.folder, el.name));
 

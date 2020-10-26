@@ -1,5 +1,5 @@
 function [stats] = statisticalInfo(stats, suffix, penumbraMask, coreMask, ...
-    MANUAL_ANNOTATION_FOLDER, patient, dayFold, indexImg, penumbra_color, core_color, flag_PENUMBRACORE)
+    MANUAL_ANNOTATION_FOLDER, patient, indexImg, penumbra_color, core_color, flag_PENUMBRACORE, image_suffix)
 %STATISTICALINFO Get statistics from patients and the corresponding
 % ground truth
 %   Function that get the statistics of each patient and their extraction
@@ -11,21 +11,30 @@ if length(name) == 1
     name = strcat('0', name);
 end
 
-% remove overlapping
+%% remove overlapping regions!!
 penumbraMask = penumbraMask - coreMask;
 penumbraMask = double(penumbraMask>0);
 coreMask = double(coreMask);
 
-filename = strcat(MANUAL_ANNOTATION_FOLDER, 'Patient', pIndex, '/', pIndex , name, '.png');
-if isfile(filename)
-    I = imread(filename);
-    Igray = rgb2gray(I);
-else
-    filename = strcat(MANUAL_ANNOTATION_FOLDER, patient, "\", dayFold, "\", name, '.png');
-    Igray = imread(filename);
+%% load the correct annotation image
+filename = strcat(MANUAL_ANNOTATION_FOLDER, 'Patient', pIndex, '/', pIndex , name, image_suffix);
+if ~isfile(filename)
+    filename = strcat(MANUAL_ANNOTATION_FOLDER, patient, "/", name, image_suffix);
 end
 
-index_no_back = find(Igray~=255);
+Igray = imread(filename);
+if ndims(Igray)==3
+    Igray = rgb2gray(Igray);
+end
+
+if isa(Igray,'uint16')
+    Igray = Igray./255;    
+    Igray(Igray>=core_color-(penumbra_color/4)) = core_color;
+    Igray(Igray<penumbra_color+(penumbra_color/4) & Igray>90) = penumbra_color;
+    Igray(Igray<90 & Igray>0) = penumbra_color/2; % brain color
+end
+
+index_no_back = find(Igray~=0); %% 0==background!
 
 I_penumbra = double(Igray==penumbra_color); % PENUMBRA COLOR
 I_penumbra_no_back = double(Igray(index_no_back)==penumbra_color); % PENUMBRA COLOR

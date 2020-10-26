@@ -65,7 +65,7 @@ constants.USE_UNIQUE_MODEL = true; % for creating a unque model and not passing 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% values for each parametric map [perc(%), up/down, core/penumbra]
 researchesValues = containers.Map;
-researchesValues(strcat('superpixels2steps_',SUFFIX_RES)) = struct('cluster',"yes"); % no need of thresholding values!
+researchesValues(strcat('superpixels2steps_',constants.SUFFIX_RES)) = struct('cluster',"yes"); % no need of thresholding values!
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% execute the main extraction function

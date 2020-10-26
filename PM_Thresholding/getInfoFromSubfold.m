@@ -1,9 +1,10 @@
-function [combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks,penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats,tableData,nImages] = ...
+function [combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks,penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,imageMTT,stats,tableData,nImages] = ...
     getInfoFromSubfold(subfold,subfolds,PARAMETRIC_IMAGES_TO_ANALYZE,research,folderPath,patient,n_fold,...
     MANUAL_ANNOTATION_FOLDER,saveFolder,colorbarPointY,parametricMaps,SUPERVISED_LEARNING,FAKE_MIP,...
     suffix,colorbarPointBottomX,colorbarPointTopX,penumbra_color,core_color,flag_PENUMBRACORE,SAVE_PAR_MAPS,count,perce, ...
     combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks, ...
-    penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats,dayFold)
+    penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,imageMTT,stats,dayFold,...
+    image_suffix,USESUPERPIXELS,N_SUPERPIXELS)
 % GETINFOFROMSUBFOLD Extract the various images from the subfold
 %   For each subfold, extract the images and if the flag is set, it will
 %   cluster the images (last lines)
@@ -57,10 +58,8 @@ if ~PARAMETRIC_IMAGES_TO_ANALYZE
 else 
     for i=1:n
         if i<10
-%             images{i} = imread([folderPath '0' num2str(i) '.png']);
             images{i} = imread(strcat(folderPath,'0',num2str(i),'.png'));
         else
-%             images{i} = imread([folderPath num2str(i) '.png']);
             images{i} = imread(strcat(folderPath,num2str(i),'.png'));
         end
         sec(i,1) = 0;
@@ -71,15 +70,17 @@ sortInfo = cell(size(info));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % get corresponding index of the subfold
-pm_index = 1; % for SE000004 == Cerebral Blood Flow (CBF)
+pm_index = 1; % for SE000004 ( == Cerebral Blood Flow (CBF)
 if strcmp(subfold, subfolds(end-2)) % for SE000005 == Cerebral Blood Volume (CBV)
     pm_index = 2;
 elseif strcmp(subfold, subfolds(end-1)) % for SE000006: TMax
     pm_index = 3;
-elseif strcmp(subfold, subfolds(end)) % SE000007: Time to Peak (TTP)
+elseif strcmp(subfold, subfolds(end)) % SE000007 (TPP): Time to Peak (TTP)
     pm_index = 4;
-elseif strcmp(subfold, subfolds(1)) % SE000003: Enhanced image
+elseif strcmp(subfold, subfolds(1)) % SE000003 (MIP): Enhanced image
     pm_index = 5;
+elseif strcmp(subfold, subfolds(2)) % for MTT
+    pm_index = 6;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -103,18 +104,19 @@ for x=1:size(sec,1)
     if ~ exist(strcat(saveFolder, patient),'dir')
         mkdir(strcat(saveFolder, patient));
     end
-    if ~ exist(strcat(saveFolder, patient,"\",dayFold),'dir')
-        mkdir(strcat(saveFolder, patient,"\",dayFold));
+    % create also the day folder
+    if ~ exist(strcat(saveFolder, patient,"/",dayFold),'dir')
+        mkdir(strcat(saveFolder, patient,"/",dayFold));
     end
-    
+        
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% save the parametric map
     if SAVE_PAR_MAPS
         % create the folder if it doesn't exits
-        if ~ exist(strcat(saveFolder, patient, "\", dayFold, "\", subfold),'dir')
-            mkdir(strcat(saveFolder, patient, "\", dayFold, "\", subfold));
+        if ~ exist(strcat(saveFolder, patient, "/", dayFold, "/", subfold),'dir')
+            mkdir(strcat(saveFolder, patient, "/", dayFold, "/", subfold));
         end
-        imwrite(sortImages{pm_index,x}, strcat(saveFolder, patient, "\",dayFold, "\", subfold, "/", name, ".png"));
+        imwrite(sortImages{pm_index,x}, strcat(saveFolder, patient, "/",dayFold, "/", subfold, "/", name, ".png"));
     end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -145,7 +147,7 @@ for x=1:size(sec,1)
         T(:,colorbarPointY:end) = 0; % remove F in the bottom right
         skullMasks{5,x} = double(T); % add the enhanced image for classification
 
-    elseif (subfold == subfolds(2)) || (subfold == subfolds(3)) || (subfold == subfolds(end-1)) || (subfold== subfolds(end))
+    elseif ismember(subfold, subfolds) % not the first one but still a subfolder in my array 
 
         for indexName=1:numel(parametricMaps)
             mapName = parametricMaps{indexName};
@@ -157,20 +159,13 @@ for x=1:size(sec,1)
             isCore = 0;
             isPenumbra = 0;
 
-            if subfold == subfolds(2) 
+            if subfold == subfolds(3) 
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 %% CBF 
-                imageCBF{x} = uint8(sortImages{pm_index,x});
-                imageCBF{x}(:,colorbarPointY:end, :) = 0; % remove colorbar 
-
-                % add the CBF image in order to calculate later 
-                % MTT = CBV/CBF;
-                if strcmp(mapName, 'MTT')
-                    MTTimages{x} = uint8(sortImages{pm_index,x});
-                end
-
-                % if we want the percentage of CBF
                 if contains(mapName, 'CBF')
+                    imageCBF{x} = uint8(sortImages{pm_index,x});
+                    imageCBF{x}(:,colorbarPointY:end, :) = 0; % remove colorbar 
+                
                     valuesCBF = research.(mapName);
                     percentage = str2double(valuesCBF(1));
                     direction = valuesCBF(2);
@@ -180,35 +175,29 @@ for x=1:size(sec,1)
                         isPenumbra = 1;
                     end
                 end
-            elseif subfold == subfolds(end-2) 
+            elseif subfold == subfolds(2)   
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                %% CBV
-                imageCBV{x} = uint8(sortImages{pm_index,x});
-
+                %% MTT
                 if contains(mapName, 'MTT')
-
-                    MTTimages{x} = mapMTT(imageCBV{x},MTTimages{x}, colorbarPointTopX,colorbarPointBottomX,colorbarPointY);
-
+                    imageMTT{x} = uint8(sortImages{pm_index,x});
+                    imageMTT{x}(:,colorbarPointY:end, :) = 0; % remove colorbar 
                     valuesMTT = research.(mapName);
                     percentage = str2double(valuesMTT(1));
                     direction = valuesMTT(2);
 
-                    if strcmp(direction, "up")
-                        MTTimages{x} = MTTimages{x} > percentage;
-                    elseif strcmp(direction, "down")
-                        MTTimages{x} = MTTimages{x} < percentage;
-                    end
-
-                    if strcmp(valuesCBV(3), "core")
+                    if strcmp(valuesMTT(3), "core")
                         isCore = 1;
-                    elseif strcmp(valuesCBV(3), "penumbra")
+                    elseif strcmp(valuesMTT(3), "penumbra")
                         isPenumbra = 1;
                     end
                 end
-
-                imageCBV{x}(:,colorbarPointY:end, :) = 0; % remove colorbar 
-
+            elseif subfold == subfolds(end-2) 
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                %% CBV
                 if contains(mapName, 'CBV')
+                    imageCBV{x} = uint8(sortImages{pm_index,x});
+                    imageCBV{x}(:,colorbarPointY:end, :) = 0; % remove colorbar 
+
                     valuesCBV = research.(mapName);
                     percentage = str2double(valuesCBV(1));
                     direction = valuesCBV(2);
@@ -234,7 +223,7 @@ for x=1:size(sec,1)
                         isPenumbra = 1;
                     end
                 end
-            elseif subfold == subfolds(end-1) 
+            elseif subfold == subfolds(end) 
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 %% TTP
                 if contains(mapName, 'TTP')
@@ -281,14 +270,7 @@ for x=1:size(sec,1)
                     tryImage{x} = ones(size(sortImages{pm_index,x}));
                     retMask = ones(size(sortImages{pm_index,x},1), size(sortImages{pm_index,x},2));
                 else
-                    if ~contains(mapName, 'MTT')
-                        [tryImage{x}, retMask] = segmentWithKMeanClustering(sortImages{pm_index,x}, direction, 100, colorbarPointBottomX, colorbarPointTopX, startingColorPixelX, colorbarPointY);
-                    else
-                        % just for the created MTT map 
-                        tryImage{x} = ones(size(sortImages{pm_index,x}));
-                        MTTimages{x}(:,colorbarPointY:end, :) = 0; % remove colorbar 
-                        retMask = MTTimages{x};
-                    end
+                    [tryImage{x}, retMask] = segmentWithKMeanClustering(sortImages{pm_index,x}, direction, 100, colorbarPointBottomX, colorbarPointTopX, startingColorPixelX, colorbarPointY);
                 end
                 % just use the red channel
                 tryImage{x}(:,:,2) = 0;
@@ -344,7 +326,7 @@ for x=1:size(sec,1)
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %% get the statistical information from the image
             if SUPERVISED_LEARNING % only if we are doing supervised learning 
-                stats = statisticalInfo(stats, new_suffix, totalPenumbraMask{x}, totalCoreMask{x}, MANUAL_ANNOTATION_FOLDER, patient, dayFold, x, penumbra_color, core_color, flag_PENUMBRACORE);
+                stats = statisticalInfo(stats, new_suffix, totalPenumbraMask{x}, totalCoreMask{x}, MANUAL_ANNOTATION_FOLDER, patient, x, penumbra_color, core_color, flag_PENUMBRACORE, image_suffix);
             end
         end
     end
@@ -356,7 +338,7 @@ if subfold == subfolds(end) && strcmp("cluster", mapName) % last folder
     if strcmp(research.(mapName), "yes")
         [tableData,nImages] = clusterImagesWithRealValues(skullMasks, sortImages, ...
             colorbarPointBottomX, colorbarPointTopX, colorbarPointY, MANUAL_ANNOTATION_FOLDER, ...
-            SUPERVISED_LEARNING, FAKE_MIP, patient, n_fold);
+            SUPERVISED_LEARNING, FAKE_MIP, patient, n_fold, image_suffix, suffix, USESUPERPIXELS, N_SUPERPIXELS);
     end
 end
 

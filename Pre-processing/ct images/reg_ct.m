@@ -37,14 +37,6 @@ if modind==2
 end
 optimizer.MaximumIterations = optimizer.MaximumIterations*scaling;
 
-% % SkullError = cell(1,11);
-% % MutualInfo = cell(1,11);
-% % MeanSquareError = cell(1,11);
-
-% % MI = zeros(30,2);
-% % MSE = zeros(30,2);
-% % SkullE = zeros(30,2);
-
 for p = patients
     if ~ISLISTOFDIR
         p_id = num2str(p);
@@ -54,7 +46,7 @@ for p = patients
             fname = ([workspaceFolder save_prefix suffix 'PA' p_id '.mat']);
         end
     else 
-        folderPath = ImageFolder{p}; % ImageFolder{patients==p}
+        folderPath = ImageFolder{p}; 
         if strcmp(folderPath,"") % == there is no patient 
             ImageRegistered{p} = [];
             continue
@@ -63,7 +55,7 @@ for p = patients
         fname = workspaceFolder + convertCharsToStrings(save_prefix) + p_id + ".mat";
     end
     
-    disp("Registering patient " + p_id);
+    disp("Registering patient: " + p_id);
     if exist(fname, 'file')==2
         load(fname);
         ImageRegistered{p} = patImage;
@@ -87,16 +79,9 @@ for p = patients
                 movingReg{i} = imregister(moving, fixed, transform, optimizer, metric,'InitialTransformation',imregcorr(moving,fixed));
             end
 
-% %             MI(i,:) = [mi(fixed,moving,4096) mi(fixed,movingReg{i},4096)];
-% %             MSE(i,:) = [immse(fixed,moving) immse(fixed,movingReg{i})];
-% %             SkullE(i,:) = [numel(find(xor(fixed>1900,moving>1900))) numel(find(xor(fixed>1900,movingReg{i}>1900)))];
         end
         movingReg{1} = fixed;
         ImageRegistered{p}{k} = movingReg;
-        
-% %         MutualInfo{p}{k} = MI;
-% %         MeanSquareError{p}{k} = MSE;
-% %         SkullError{p}{k} = SkullE;
         
         disp(['Currently registering p=' num2str(p) ', k=' num2str(k)])
     end
@@ -105,13 +90,9 @@ for p = patients
         patImage = ImageRegistered{p};
         save(fname,'patImage','-v7.3')
     end
-    
     toc
 end
 
 if SAVE
     save(strcat(workspaceFolder, 'ImageRegistered', suffix, suffix_workspace, '.mat'),'ImageRegistered','-v7.3')
-%     save(strcat(workspaceFolder, 'MutualInfo', suffix, suffix_workspace, '.mat'),'MutualInfo')
-%     save(strcat(workspaceFolder, 'MeanSquareError', suffix, suffix_workspace, '.mat'),'MeanSquareError')
-%     save(strcat(workspaceFolder, 'SkullError', suffix, suffix_workspace, '.mat'),'SkullError')
 end

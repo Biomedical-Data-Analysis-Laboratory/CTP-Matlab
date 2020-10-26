@@ -9,14 +9,16 @@ function [predictions,statsClassific] = mainExtractionFunc(patients,researchesVa
 %           cross-validation approach if the flag is set
 
 if nargin<11
-	appUIFIGURE = uifigure;
-    if nargin<10
-        workspaceFolder = saveFolder;
-    end
+	appUIFIGURE = 0; 
+end
+if nargin<10
+    workspaceFolder = saveFolder;
 end
 
-wb = uiprogressdlg(appUIFIGURE,'Title','Please Wait',...
-    'Message','Start analyzing patients...');
+if appUIFIGURE~=0
+    wb = uiprogressdlg(appUIFIGURE,'Title','Please Wait',...
+        'Message','Start analyzing patients...');
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% CONSTANTS
@@ -29,37 +31,56 @@ SAVE_TRESHOLDING = constants.SAVE_TRESHOLDING; % flag to save the thresholding v
 flag_PENUMBRACORE = constants.flag_PENUMBRACORE; % to run also the penumbra-core statistics
 DIFFERENT_PERCENTAGES = constants.DIFFERENT_PERCENTAGES; % use only for the ROC curve
 SUPERVISED_LEARNING = constants.SUPERVISED_LEARNING; % flag for the supervised learning (with or without the ground truth)
+CALCULATE_STATS_ONLY = constants.CALCULATE_STATS_ONLY; % flag to calculate only the stats of the prediction (if they are already saved!)
 FAKE_MIP = constants.FAKE_MIP; % use to just ignore the old infarction presented in the MIP (maximum intensity projection) images
+TIFF_SUFFIX = constants.TIFF_SUFFIX; % use the .tiff suffix in the images
 SUFFIX_RES = constants.SUFFIX_RES; % 'SVM' // 'tree' // 'SVM_tree' 
 USE_UNIQUE_MODEL = constants.USE_UNIQUE_MODEL; % for creating a unque model and not passing through a cross-validation over the patiens
+THRESHOLDING = constants.THRESHOLDING;
+USESUPERPIXELS = constants.USESUPERPIXELS;
+N_SUPERPIXELS = constants.N_SUPERPIXELS;
+SMOTE = constants.SMOTE;
+STEPS = constants.STEPS;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% add the n_superpixels at the end, even if the superpixels flag is false
+prefixForTable = "";
+
+if USESUPERPIXELS
+    prefixForTable = int2str(N_SUPERPIXELS)+"_";
+else
+    prefixForTable = prefixForTable+"10_"; % default value if no superpixels involved
+end
+
+if SMOTE
+    prefixForTable = prefixForTable+"SMOTE_";
+end
+
+disp(prefixForTable);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% initialize variables 
 % flag for the leave-one-out prediction (predict with other models!)
 totalTableData =  table();
-STEPS = 2;
 totalNImages = cell(1,numel(patients));
 predictionMasks = cell(3,numel(patients));
 
+predictions = [];
 stats = table();
 statsClassific = table();
-
-MODELS_PENUMBRA = cell(1,numel(patients));
-MODELS_CORE = cell(1,numel(patients));
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% load the saved stats
-% if exist(strcat(SAVED_MODELS_FOLDER,"statsClassific_2steps_",SUFFIX_RES,".mat"),'file')
-%     load(strcat(SAVED_MODELS_FOLDER,"statsClassific_2steps_",SUFFIX_RES,".mat"));
-% end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% colors index
 colorbarPointTopX = 129;
 colorbarPointBottomX = 384;
 colorbarPointY = 436;
-penumbra_color = 76;
-core_color = 150;
+penumbra_color = 170; %76;
+core_color = 255; %150
+
+image_suffix = ".png";
+if TIFF_SUFFIX
+    image_suffix = ".tiff";
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -67,16 +88,56 @@ core_color = 150;
 %% for each suffix 
 for suff = researchesValues.keys
     count = 0;
+    MODELS = cell(1,STEPS);
     
     suffix = suff{1};
     research = researchesValues(suffix);
     parametricMaps = fieldnames(research);
     
-%     if exist(strcat(saveFolder,"totalTableData.mat"),'file')==0
+    tic
+    %% Load the right model(s) if they are already saved.
+    if USE_UNIQUE_MODEL && isfield(research, "cluster") && strcmp(research.cluster, "yes") && ...
+        ((STEPS>1 && exist(strcat(SAVED_MODELS_FOLDER,"MODELS_PENUMBRA_",suffix,"_ALL.mat"),'file')==2 && ...
+        exist(strcat(SAVED_MODELS_FOLDER,"MODELS_CORE_",suffix,"_ALL.mat"),'file')==2) || ...
+        (STEPS==1 && exist(strcat(SAVED_MODELS_FOLDER,"MODELS_UNIQUE_",suffix,"_ALL.mat"),'file')==2))
+        for step=1:STEPS
+            if step==1
+                if STEPS == 1 %% unique classifier model 
+                    load(strcat(SAVED_MODELS_FOLDER,"MODELS_UNIQUE_",suffix,"_ALL.mat"),"Mdl")
+                else
+                    if strcmp(SUFFIX_RES,'SVM_tree')
+                        load(strcat(SAVED_MODELS_FOLDER,"MODELS_PENUMBRA_",int2str(STEPS),"steps_SVM_ALL.mat"),"Mdl");
+                    else
+                        load(strcat(SAVED_MODELS_FOLDER,"MODELS_PENUMBRA_",suffix,"_ALL.mat"),"Mdl");
+                    end
+                end
+            elseif step==STEPS
+                if strcmp(SUFFIX_RES,'SVM_tree')
+                    load(strcat(SAVED_MODELS_FOLDER,"MODELS_CORE_",int2str(STEPS),"steps_tree_ALL.mat"),"Mdl");
+                else
+                    load(strcat(SAVED_MODELS_FOLDER,"MODELS_CORE_",suffix,"_ALL.mat"),"Mdl");
+                end
+            end
+            
+            MODELS{1,step} = Mdl;
+        end
+    end
+    toc
+    
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% 0^ STEP
     %% for each patient
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    if ~LOAD_AND_PREDICT_PATIENT && exist(strcat(workspaceFolder,prefixForTable,"totalTableData.mat"),'file')==2 && ...
+            exist(strcat(workspaceFolder,prefixForTable,"totalNImages.mat"),'file')==2 && ...
+            exist(strcat(workspaceFolder,prefixForTable,"predictionMasks.mat"),'file')==2 
+        
+        load(strcat(workspaceFolder,prefixForTable,"totalTableData.mat"),"totalTableData");
+        load(strcat(workspaceFolder,prefixForTable,"totalNImages.mat"),"totalNImages");
+        load(strcat(workspaceFolder,prefixForTable,"predictionMasks.mat"),"predictionMasks");
+        
+    else
+        
     for p=1:numel(patients)
         
         percToLoop = 0:10:100;
@@ -93,6 +154,11 @@ for suff = researchesValues.keys
         number_of_slice_per_pm = 0;
         
         patient = convertStringsToChars(patients(p));
+        
+        if strcmp(patient, "CTP_01_054") || strcmp(patient, "CTP_01_077") || strcmp(patient, "CTP_02_046") || strcmp(patient, "CTP_02_049") || strcmp(patient, "CTP_02_052")
+            % wrong patient to check
+            continue
+        end
 
         combinedResearchCoreMaks = cell(1,50); % initialize the combined core mask
         combinedResearchPenumbraMaks = cell(1,50); % initialize the combined penumbra mask
@@ -103,10 +169,10 @@ for suff = researchesValues.keys
         if ~strcmp(dayFold.name, '.') && ~strcmp(dayFold.name, '..') 
         n_fold = n_fold + 1;
         
-        disp(strcat(patient, " - ", dayFold.name));
+        disp(strcat("Patient: ", patient, " - ", dayFold.name));
         
         % count the subfolders inside the dayFold, sutracting the
-        % "Annotations" and "Original" folders from the count and if the
+        %       "Annotations" and "Original" folders from the count and if the
         % number is less than the number of the initial subfolds, do nothing
         foldsInsideDayFold = struct2cell(dir(strcat(dayFold.folder,'/',dayFold.name)));
         foldsInsideDayFold = foldsInsideDayFold(1,3:end);
@@ -117,7 +183,7 @@ for suff = researchesValues.keys
                subsavefoldcount = subsavefoldcount + 1;
             end
         end
-        if (numel(foldsInsideDayFold) - subsavefoldcount) < numel(subfolds)
+        if (numel(foldsInsideDayFold) - subsavefoldcount) < numel(subfolds)-1
             disp("Number of folders not correct! Skip this one...");
             continue
         end
@@ -137,7 +203,7 @@ for suff = researchesValues.keys
                 number_of_slice_per_pm = n; % set it for later comparison
             else
                 if number_of_slice_per_pm~=n
-                    disp("number of slices not equal in the PM");
+                    disp("number of slices not equal in the PM: " + folderPath);
                     break
                 end
             end
@@ -145,25 +211,25 @@ for suff = researchesValues.keys
             savedAnnotationFolderPath = strcat(perfusionCTFolder,patient,'/',dayFold.name,intermediateFold,subsavefolder{2});
             saved_n = numel(dir(savedAnnotationFolderPath))-2;
 
-             % nothing already saved in the original folder or the
-             % RUN_EXTRACTION_AGAIN is set == true
+             % nothing already saved in the original folder or the RUN_EXTRACTION_AGAIN is set == true
             if (saved_n/2) < n || RUN_EXTRACTION_AGAIN
-                %% initialize the cells if we are cecking the grayscale image 
+                %% initialize the cells if we are checking the grayscale image 
                 if subfold == subfolds(1)
                     tryImage = cell(1,n); % initialize the ground truth cell
                     groundTruthImage = cell(1,n); % initialize the ground truth cell
                     coreImage = cell(1,n); % initialize the core image cell
                     penumbraImage = cell(1,n); % initialize the penumbra image cell
-                    %%
+                    %% initialize the pm cells
                     totalCoreMask = cell(1,n);
                     totalPenumbraMask = cell(1,n);
                     imageCBV = cell(1,n);
                     imageCBF = cell(1,n);
                     imageTTP = cell(1,n);
                     imageTMAX = cell(1,n);
-                    %%
-                    sortImages = cell(5,n); % 5 == number of parametric maps + enhanced image
-                    skullMasks = cell(5,n);
+                    imageMTT = cell(1,n);
+                    
+                    sortImages = cell(numel(subfolds),n);
+                    skullMasks = cell(numel(subfolds),n);
                 end
 
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -171,12 +237,13 @@ for suff = researchesValues.keys
                 %% get the information of the various map for a specific subfolder
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 [combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks,penumbraImage,...
-                totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats,tableData,nImages] = ...
+                totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,imageMTT,stats,tableData,nImages] = ...
                     getInfoFromSubfold(subfold,subfolds,PARAMETRIC_IMAGES_TO_ANALYZE,research,folderPath,patient,n_fold,...
                     MANUAL_ANNOTATION_FOLDER,saveFolder,colorbarPointY,parametricMaps,SUPERVISED_LEARNING,FAKE_MIP,...
                     suffix,colorbarPointBottomX,colorbarPointTopX,penumbra_color,core_color,flag_PENUMBRACORE,SAVE_PAR_MAPS,count,perce, ...
                     combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks, ...
-                    penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,stats,dayFold.name);
+                    penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,imageMTT,stats,dayFold.name,...
+                    image_suffix, USESUPERPIXELS, N_SUPERPIXELS);
 
                 if subfold == subfolds(end)
                     totalNImages{1,p} = nImages;
@@ -185,11 +252,124 @@ for suff = researchesValues.keys
                         predictionMasks{1,p}{1,sm} = ones(size(skullMasks{1,sm})); % skullMasks{1,p};
                     end
                     if ~LOAD_AND_PREDICT_PATIENT
+                        if USESUPERPIXELS
+                            if USESUPERPIXELS==1
+                                varnames = ["patient","cbf","cbf_superpixels",...
+                                    "cbv","cbv_superpixels",...
+                                    "tmax","tmax_superpixels",...
+                                    "ttp","ttp_superpixels",...
+                                    "NIHSS","oldInfarction","weights",...
+                                    "output","outputPenumbraCore","outputCore","countRow"];
+                            elseif USESUPERPIXELS==2
+                                varnames = ["patient","cbf_superpixels","cbv_superpixels",...
+                                    "tmax_superpixels","ttp_superpixels",...
+                                    "NIHSS","oldInfarction","weights",...
+                                    "output","outputPenumbraCore","outputCore","countRow"];
+                            end
+                        else
+                            varnames = ["patient","cbf","cbv","tmax","ttp",...
+                                "NIHSS","oldInfarction","weights",...
+                                "output","outputPenumbraCore","outputCore","countRow"];
+                        end
                         % concatenate the data information in a table
                         % can create memory problem if there are too many
-                        % patients too predict (use the elseif statement in case!!
+                        % patients to predict (use the elseif statement in case!!
+                        
+                        %% remove duplicate rows from table
+                        countRow = ones(size(tableData,1),1);
+                        if sum(contains(tableData.Properties.VariableNames,'countRow'))==0
+                            tableData.countRow = countRow;
+                        end
+                        
+                        [uniqueTableData,ia,ic] = unique(tableData(:,2:end-1));
+                        
+                        countRow = histcounts(ic,1:numel(ia)+1)'; % count the frequency of the unique values
+                        
+                        pIndex = getIndexFromPatient(patient, n_fold);
+                        indexPatient = ones(size(countRow,1),1) .* str2double(pIndex);
+                        
+                        if USESUPERPIXELS
+                            if USESUPERPIXELS==1
+                                tableData = table(indexPatient,...
+                                    uniqueTableData.cbf,uniqueTableData.cbf_superpixels,...
+                                    uniqueTableData.cbv,uniqueTableData.cbv_superpixels,...
+                                    uniqueTableData.tmax,uniqueTableData.tmax_superpixels,...
+                                    uniqueTableData.ttp,uniqueTableData.ttp_superpixels,...
+                                    uniqueTableData.NIHSS,uniqueTableData.oldInfarction,uniqueTableData.weights,...
+                                    uniqueTableData.output,uniqueTableData.outputPenumbraCore,uniqueTableData.outputCore,...
+                                    countRow, 'VariableNames', varnames);
+                            elseif USESUPERPIXELS==2
+                                tableData = table(indexPatient,...
+                                    uniqueTableData.cbf_superpixels,...
+                                    uniqueTableData.cbv_superpixels,...
+                                    uniqueTableData.tmax_superpixels,...
+                                    uniqueTableData.ttp_superpixels,...
+                                    uniqueTableData.NIHSS,uniqueTableData.oldInfarction,uniqueTableData.weights,...
+                                    uniqueTableData.output,uniqueTableData.outputPenumbraCore,uniqueTableData.outputCore,...
+                                    countRow, 'VariableNames', varnames);
+                            end
+                        else
+                             tableData = table(indexPatient,...
+                                uniqueTableData.cbf,uniqueTableData.cbv,...
+                                uniqueTableData.tmax,uniqueTableData.ttp,...
+                                uniqueTableData.NIHSS,uniqueTableData.oldInfarction,uniqueTableData.weights,...
+                                uniqueTableData.output,uniqueTableData.outputPenumbraCore,uniqueTableData.outputCore,...
+                                countRow, 'VariableNames', varnames);
+                        end
+                        
+                        if SMOTE % run this only if we set to use SMOTE alg.
+                            penumbraRowsIndex = tableData.output==2;
+                            coreRowsIndex = tableData.output==3;
+
+                            % var that contain the index, the percentage of oversampling (*100), the weight and the
+                            % corresponding output for each infarcted region
+                            inforInfarctedRows = {penumbraRowsIndex,5,3,2,1;coreRowsIndex,20,20,2,3};
+
+                            for infreg_idx = 1:size(inforInfarctedRows,1)
+                                
+                                nearestneig_percentageoversampling = inforInfarctedRows{infreg_idx,2};
+                                if sum(coreRowsIndex)<=nearestneig_percentageoversampling
+                                    nearestneig_percentageoversampling = sum(coreRowsIndex)-1;
+                                end
+                                
+                                if nearestneig_percentageoversampling>0 % only if there are rows defined as core/penumbra
+
+                                    [X,C] = smote(table2array(tableData(inforInfarctedRows{infreg_idx,1},2:end-5)), ...
+                                        nearestneig_percentageoversampling, nearestneig_percentageoversampling, ...
+                                        'Class', tableData.output(inforInfarctedRows{infreg_idx,1}));
+
+                                    indexPatient = ones(size(X,1),1) .* str2double(pIndex);
+                                    if USESUPERPIXELS==1
+                                        sinthesizeTable = table(indexPatient,...
+                                            X(:,1),X(:,2),X(:,3),X(:,4),X(:,5),X(:,6),X(:,7),X(:,8),X(:,9),X(:,10),...
+                                            ones(size(X,1),1).*inforInfarctedRows{infreg_idx,3},C,...
+                                            ones(size(X,1),1).*inforInfarctedRows{infreg_idx,4},...
+                                            ones(size(X,1),1).*inforInfarctedRows{infreg_idx,5},ones(size(X,1),1),...
+                                            'VariableNames', varnames);
+                                    else
+                                        sinthesizeTable = table(indexPatient,...
+                                            X(:,1),X(:,2),X(:,3),X(:,4),X(:,5),X(:,6),...
+                                            ones(size(X,1),1).*inforInfarctedRows{infreg_idx,3},C,...
+                                            ones(size(X,1),1).*inforInfarctedRows{infreg_idx,4},...
+                                            ones(size(X,1),1).*inforInfarctedRows{infreg_idx,5},ones(size(X,1),1),...
+                                            'VariableNames', varnames);
+                                    end
+
+                                    tableData = [tableData;sinthesizeTable];
+                                    
+                                    clear sinthesizeTable
+                                end
+                            end
+                            
+                            clear penumbraRowsIndex coreRowsIndex
+                        end
+                        
                         totalTableData = [totalTableData; tableData]; %#ok<*AGROW>
-                    elseif LOAD_AND_PREDICT_PATIENT
+                        % shuffle the table
+                        totalTableData = totalTableData(randperm(size(totalTableData,1)),:);
+                        clear uniqueTableData countRow ia ic tableData
+                        
+                    else 
                         pIndex = getIndexFromPatient(patient,n_fold);
                         patientSubFold = strcat(patient,'/', dayFold.name, '/');                
                         continue_pred = 1;
@@ -218,7 +398,7 @@ for suff = researchesValues.keys
                         [predictions,statsClassific,~] = predictWithUnsupervisedLearning(p,pIndex,suffix,tableData,predictionMasks,...
                             MANUAL_ANNOTATION_FOLDER,penumbra_color,core_color,SUPERVISED_LEARNING,totalNImages,...
                             statsClassific,patientSubFold,saveFolder,subsavefolder,SHOW_IMAGES,...
-                            SAVED_MODELS_FOLDER,SUFFIX_RES,STEPS,USE_UNIQUE_MODEL);
+                            SAVED_MODELS_FOLDER,SUFFIX_RES,STEPS,USE_UNIQUE_MODEL,image_suffix,MODELS);
                     end
                 end
             else
@@ -241,13 +421,13 @@ for suff = researchesValues.keys
 
             end
         end
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %% Save the thresholding images
-            if SAVE_TRESHOLDING
-                saveThresholdingImages(saveFolder,patient,suffix,research,tryImage,...
-                    MANUAL_ANNOTATION_FOLDER,penumbraImage,coreImage,penumbra_color,core_color,...
-                    totalCoreMask,totalPenumbraMask,saveCore,savePenumbra,dayFold.name);    
-            end
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %% Save the thresholding images
+        if SAVE_TRESHOLDING
+            saveThresholdingImages(saveFolder,patient,suffix,research,tryImage,...
+                MANUAL_ANNOTATION_FOLDER,penumbraImage,coreImage,penumbra_color,core_color,...
+                totalCoreMask,totalPenumbraMask,saveCore,savePenumbra);    
+        end
         end
         end
 
@@ -262,17 +442,35 @@ for suff = researchesValues.keys
             msg = "Loaded patient ";
         end
         
-        wb.Value = ((p/numel(patients))/divided);
-        wb.Message = strcat(msg, num2str(p), "/", num2str(numel(patients)));
-        
+        if appUIFIGURE~=0
+            wb.Value = ((p/numel(patients))/divided);
+            wb.Message = strcat(msg, num2str(p), "/", num2str(numel(patients)));
+        end
     end
-        
-    wb.Value = (p/numel(patients))/divided;
-    wb.Message = "Saving workspace...";
+       
+    if appUIFIGURE~=0
+        wb.Value = (p/numel(patients))/divided;
+        wb.Message = "Saving workspace...";
+    end
 
-    save(strcat(workspaceFolder,"totalTableData.mat"), 'totalTableData', '-v7.3');
-    save(strcat(workspaceFolder,"totalNImages.mat"), 'totalNImages', '-v7.3');
-    save(strcat(workspaceFolder,"predictionMasks.mat"), 'predictionMasks', '-v7.3');
+    if THRESHOLDING
+        save(strcat(workspaceFolder,suffix,"_stats.mat"), 'stats', '-v7.3');
+    end
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % multiply the weights for the count rows (the non unique) and remove that column
+    if ~LOAD_AND_PREDICT_PATIENT
+        totalTableData.weights = totalTableData.weights .* totalTableData.countRow;
+        totalTableData.countRow = [];
+
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %% Save the tables
+        save(strcat(workspaceFolder,prefixForTable,"totalTableData.mat"), 'totalTableData', '-v7.3');
+        save(strcat(workspaceFolder,prefixForTable,"totalNImages.mat"), 'totalNImages', '-v7.3');
+        save(strcat(workspaceFolder,prefixForTable,"predictionMasks.mat"), 'predictionMasks', '-v7.3');
+        save(strcat(workspaceFolder,suffix,"_stats.mat"), 'stats', '-v7.3');
+    end
+    
+    end % end if the previous variables are not saved
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% 3^ STEP
@@ -280,80 +478,109 @@ for suff = researchesValues.keys
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     if isfield(research, "cluster") && strcmp(research.cluster, "yes") && ~LOAD_AND_PREDICT_PATIENT
         
-        wb.Value = (p/numel(patients))/2;
-        wb.Message = "Predicting patient(s)...";
-        
+        if appUIFIGURE~=0
+            wb.Value = 0.5;
+            wb.Message = "Predicting patient(s)...";
+        end
+                
         %% for each patient
         for p=1:numel(patients)
             
             patient = convertStringsToChars(patients(p));
             n_fold = 0;
             
-            % progress bar update
-            wb.Value = ((p/numel(patients))/2) + 0.5;
-            wb.Message = strcat("Predicting patient ", num2str(p), "/", num2str(numel(patients)), "...");
+            if appUIFIGURE~=0
+                % progress bar update
+                wb.Value = ((p/numel(patients))/2) + 0.5;
+                wb.Message = strcat("Predicting patient ", num2str(p), "/", num2str(numel(patients)), "...");
+            end
 
-            for dayFold = dir(strcat(saveFolder, patient))'
-            if ~strcmp(dayFold.name, '.') && ~strcmp(dayFold.name, '..') 
-            
-            n_fold = n_fold + 1;
-            pIndex = getIndexFromPatient(patient,n_fold);
-            
-            patientSubFold = strcat(patient,'/', dayFold.name, '/');
-                
-            continue_pred = 1;
-            for sf = subsavefolder
-                if ~ exist(strcat(saveFolder, patientSubFold, sf),'dir')
-                    mkdir(strcat(saveFolder, patientSubFold, sf));
-                end
-                
-                if strcmp(sf, subsavefolder{2})
-                    saved_n = numel(dir(strcat(saveFolder, patientSubFold, sf)))-2;
-                    if isempty(totalNImages{1,p}) % if the annotations are already saved 
-                        continue_pred = 0; % continue the loop without predicting 
-                        break
+            for dayFold = dir(strcat(perfusionCTFolder, patient))'
+                if ~strcmp(dayFold.name, '.') && ~strcmp(dayFold.name, '..') 
+                    n_fold = n_fold + 1;
+                    pIndex = getIndexFromPatient(patient,n_fold);
+
+                    patientSubFold = strcat(patient,'/', dayFold.name, '/');
+
+                    continue_pred = 1;
+                    for sf = subsavefolder
+                        if ~ exist(strcat(saveFolder, patientSubFold, sf),'dir')
+                            mkdir(strcat(saveFolder, patientSubFold, sf));
+                        end
+
+                        if strcmp(sf, subsavefolder{2})
+                            saved_n = numel(dir(strcat(saveFolder, patientSubFold, sf)))-2;
+                            if isempty(totalNImages{1,p}) % if the annotations are already saved 
+                                continue_pred = 0; % continue the loop without predicting 
+                                break
+                            end
+                        end
+                    end
+
+                    if continue_pred==0
+                        
+                        continue
+                    end
+
+                    p_string = pIndex;
+                    pIndex_use = pIndex;
+                    if USE_UNIQUE_MODEL % to go over the next if only once
+                        p_string = "ALL";
+                        pIndex_use = "-1";
+                    end 
+
+                    if SUPERVISED_LEARNING 
+                        if (STEPS > 1 && exist(strcat(SAVED_MODELS_FOLDER,"MODELS_PENUMBRA_",suffix,"_",p_string,".mat"),'file')==0 && ...
+                            exist(strcat(SAVED_MODELS_FOLDER,"MODELS_CORE_",suffix,p_string,".mat"),'file')==0) || ...
+                            (STEPS == 1 && exist(strcat(SAVED_MODELS_FOLDER,"MODELS_UNIQUE_",suffix,"_",p_string,".mat"),'file')==0)
+                            PREDICT = true;
+                            isSUPERVISED_learn = SUPERVISED_LEARNING;
+                            if USE_UNIQUE_MODEL
+                                isSUPERVISED_learn = 0;
+                                PREDICT = false; % we don't want to predict if we are creating a single model
+                            end
+                            
+                            %% set the model and (maybe) predict
+                            statsClassific = setModelAndPredict(SAVED_MODELS_FOLDER,SUFFIX_RES,pIndex_use,p,STEPS,totalTableData,totalNImages,...
+                                penumbra_color,core_color,isSUPERVISED_learn,statsClassific,patientSubFold,saveFolder,subsavefolder,suffix,...
+                                predictionMasks,MANUAL_ANNOTATION_FOLDER,PREDICT,SHOW_IMAGES,image_suffix,USESUPERPIXELS);
+                        else % if the model exists
+                            if CALCULATE_STATS_ONLY
+                                new_suffix = strcat(suffix, "_", pIndex);
+                                
+                                annot_folder = dir(strcat(saveFolder, patientSubFold, subsavefolder{1}))';
+                                correct_files_index = contains({annot_folder.name}, suffix);
+                                annot_folder = annot_folder(correct_files_index);
+                                                                
+                                for img_idx=1:numel(annot_folder)/2
+                                    strimgidx = num2str(img_idx);
+                                    if length(strimgidx) == 1
+                                        strimgidx = strcat('0', strimgidx);
+                                    end
+                                    penumbraMask = double(imread(strcat(saveFolder,patientSubFold,subsavefolder{1},new_suffix,"_",strimgidx,"_penumbra.png")));
+                                    coreMask = double(imread(strcat(saveFolder,patientSubFold,subsavefolder{1},new_suffix,"_",strimgidx,"_core.png")));
+
+                                    statsClassific = statisticalInfo(statsClassific, new_suffix, penumbraMask, coreMask, ...
+                                        MANUAL_ANNOTATION_FOLDER, patient, img_idx, penumbra_color, core_color, flag_PENUMBRACORE, image_suffix);
+
+                                end
+                            end
+                        end
+                    else % UNSUPERVISED
+                        [predictions,statsClassific,pred_img] = predictWithUnsupervisedLearning(p,pIndex,suffix,totalTableData,predictionMasks,...
+                            MANUAL_ANNOTATION_FOLDER,penumbra_color,core_color,SUPERVISED_LEARNING,totalNImages,...
+                            statsClassific,patientSubFold,saveFolder,subsavefolder,SHOW_IMAGES,...
+                            SAVED_MODELS_FOLDER,SUFFIX_RES,STEPS,USE_UNIQUE_MODEL,image_suffix,MODELS);
                     end
                 end
-            end
-            
-            if continue_pred==0
-                continue
-            end
-            
-            p_string = pIndex;
-            pIndex_use = pIndex;
-            if USE_UNIQUE_MODEL % to go over the next if only once
-                p_string = "ALL";
-                pIndex_use = "-1";
-            end 
-            
-            if SUPERVISED_LEARNING 
-                if exist(strcat(SAVED_MODELS_FOLDER,"MODELS_PENUMBRA_2steps_",SUFFIX_RES,"_",p_string,".mat"),'file')==0 && ...
-                    exist(strcat(SAVED_MODELS_FOLDER,"MODELS_CORE_2steps_",SUFFIX_RES,"_",p_string,".mat"),'file')==0
-                    PREDICT = true;
-                    isSUPERVISED_learn = SUPERVISED_LEARNING;
-                    if USE_UNIQUE_MODEL
-                        isSUPERVISED_learn = 0;
-                        PREDICT = false; % we don't want to predcit if we are creating a single model
-                    end
-                    %% set the model and (maybe) predict
-                    [statsClassific] = setModelAndPredict(SAVED_MODELS_FOLDER,SUFFIX_RES,pIndex_use,p,STEPS,totalTableData,totalNImages,...
-                        penumbra_color,core_color,isSUPERVISED_learn,statsClassific,patientSubFold,saveFolder,subsavefolder,suffix,...
-                        predictionMasks,MANUAL_ANNOTATION_FOLDER,PREDICT,SHOW_IMAGES);
-                end
-            else % UNSUPERVISED
-                [predictions,statsClassific,pred_img] = predictWithUnsupervisedLearning(p,pIndex,suffix,totalTableData,predictionMasks,...
-                    MANUAL_ANNOTATION_FOLDER,penumbra_color,core_color,SUPERVISED_LEARNING,totalNImages,...
-                    statsClassific,patientSubFold,saveFolder,subsavefolder,SHOW_IMAGES,...
-                    SAVED_MODELS_FOLDER,SUFFIX_RES,STEPS,USE_UNIQUE_MODEL);
-            end
-            end
             end
         end
     end
 end
 
-close(wb); % close the waitbar
+if appUIFIGURE~=0
+    close(wb); % close the waitbar
+end
 
 end
 

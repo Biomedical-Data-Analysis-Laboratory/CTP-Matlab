@@ -34,7 +34,7 @@ for patientFold = patientsFolder'
         wb.Value = count/n_patients;
         wb.Message = strcat("Checking folder ", num2str(count), "/", num2str(n_patients)); 
         tic 
-%         if strcmp(patientFold.name, "CTP_01_059") 
+%         if strcmp(patientFold.name, "CTP_02_046") 
         %% get the DICOM information + save the parametric maps 
         [info, infoValues] = getDICOMinfo(patientFold, CTPField, patFolder);
 
@@ -71,6 +71,8 @@ save(strcat(workspaceFolder, 'allInfoValuesPERFUSIONCT5.mat'), 'allInfoValuesPER
 save(strcat(workspaceFolder, 'allInfoValuesPERFUSIONCT1point5.mat'), 'allInfoValuesPERFUSIONCT1point5');
 save(strcat(workspaceFolder, 'allInfoValuesPARAMETRICMAPS.mat'), 'allInfoValuesPARAMETRICMAPS');
 save(strcat(workspaceFolder, 'allInfoValuesMRI.mat'), 'allInfoValuesMRI');
+
+close(wb);
 
 end
 

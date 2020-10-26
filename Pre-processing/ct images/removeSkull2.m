@@ -1,4 +1,4 @@
-function [I,bw] = removeSkull2(Im,ftype,thold,patient)
+function [I,bw] = removeSkull2(Im,ftype,thold,patient,slice,image)
 %% Skull removal by using wavelet coefficient thresholding
 % thold = 14;
 
@@ -13,7 +13,7 @@ if (sum(Im,'all')==0) % if the image is just empty
     return
 end
 
-while thold<18000 % && (sum(bw,'all') == 0)
+while thold<38000 % && (sum(bw,'all') == 0)
     [~,cH,cV,cD] = swt2(Im,1,ftype);
 
     cH = wcodemat(cH(:,:,1),1000);
@@ -69,12 +69,13 @@ while thold<18000 % && (sum(bw,'all') == 0)
     end
     
     if maxA > 15000
+        disp(strcat("Patient: ", num2str(patient), " slice: ", num2str(slice), " image: ", num2str(image), "-- has maxA = ", num2str(maxA)));
         break
     end
     
     thold = floor(thold * 1.3);
-    if thold>15000
-        disp(strcat("patient: ", num2str(patient)));
+    if thold>22000
+        disp(strcat("Close to threshold limit: ", num2str(thold), " -- patient: ", num2str(patient),  " slice: ", num2str(slice), " image: ", num2str(image)));
     end
 end
 
@@ -97,17 +98,11 @@ for n = 1:max(max(L))
         end
     %end
 end
-% rgb2 = label2rgb(L);%,'jet',[.5 .5 .5]);
-%  subplot(247)
-% subplot(322)
-%  imshow(L,[0 10]),title('The kept segment(s)')
+
 bw = L>0;
-% imshow(bw, []);
 
-I = Im.*uint16(bw);
-%imshow(I, []);
+% I = Im.*uint16(bw);
+I = Im.*int16(bw);
 I = histeq(I);
-
-%imshow(I, []);
 
 end

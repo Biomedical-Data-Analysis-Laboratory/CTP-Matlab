@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="972127072" file="C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\GUI\GUI_annotations.prj" location="C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\GUI" name="GUI_annotations" target="target.mlapps" target-name="Package App">
+  <configuration build-checksum="2885506559" file="C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\GUI\GUI_annotations.prj" location="C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\GUI" name="GUI_annotations" target="target.mlapps" target-name="Package App">
     <param.appname>GUI_annotations</param.appname>
     <param.authnamewatermark>Luca Tomasetti</param.authnamewatermark>
     <param.email>luca.tomasetti@uis.no</param.email>
@@ -12,8 +12,8 @@
     </param.icons>
     <param.summary />
     <param.description>A GUI application to predict and to annotate parametric color-coded maps from DICOM format images.</param.description>
-    <param.screenshot>${PROJECT_ROOT}\Instruction document\draw_tab.png</param.screenshot>
-    <param.version>1.5.1</param.version>
+    <param.screenshot>C:\Users\2921329\AppData\Local\Temp\tp509509ad_16af_40f5_88f7_ed0fa0b5d8a2.png</param.screenshot>
+    <param.version>1.5.3</param.version>
     <param.products.name />
     <param.products.id />
     <param.products.version />
@@ -46,10 +46,8 @@
       <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\PM_Thresholding\setModelAndPredict.m</file>
       <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\SEGMENTATION_TECHNIQUES\classificationApproach.m</file>
       <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\SEGMENTATION_TECHNIQUES\clusterImagesWithRealValues.m</file>
-      <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\SEGMENTATION_TECHNIQUES\mapMTT.m</file>
       <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\SEGMENTATION_TECHNIQUES\predictFromModel.m</file>
       <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\SEGMENTATION_TECHNIQUES\predictWithUnsupervisedLearning.m</file>
-      <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\SEGMENTATION_TECHNIQUES\prepareDataForModel.m</file>
       <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\SEGMENTATION_TECHNIQUES\segmentWithKMeanClustering.m</file>
       <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\SEGMENTATION_TECHNIQUES\statisticalInfo.m</file>
       <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\UTILS\C2xyz_v2\C2xyz.m</file>

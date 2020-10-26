@@ -1,12 +1,12 @@
 function saveThresholdingImages(saveFolder,patient,suffix,research,tryImage,...
     MANUAL_ANNOTATION_FOLDER,penumbraImage,coreImage,penumbra_color,core_color,...
-    totalCoreMask,totalPenumbraMask,saveCore,savePenumbra,dayFold)
+    totalCoreMask,totalPenumbraMask,saveCore,savePenumbra)
 %SAVETHRESHOLDINGIMAGES Save the thresholding images
 %   Function that save the thresholding images based on the research values
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Create the folders if they don't exist
-mainSaveFolder = strcat(saveFolder, patient, "\", dayFold, "\");
+mainSaveFolder = strcat(saveFolder, patient, "/");
 
 if ~isfolder(mainSaveFolder)
     mkdir(mainSaveFolder);
@@ -47,12 +47,12 @@ for indexImg=1:numel(tryImage)
         name = strcat('0', name);
     end
 
-    filename = strcat(MANUAL_ANNOTATION_FOLDER, 'Patient', pIndex, '/', pIndex , name, '.png');
+    filename = strcat(MANUAL_ANNOTATION_FOLDER, 'Patient', pIndex, '/', pIndex , name, '.tiff');
     if isfile(filename)
         I = imread(filename);
         Igray = rgb2gray(I);
     else
-        filename = strcat(MANUAL_ANNOTATION_FOLDER, patient, "\", dayFold, "\", name, '.png');
+        filename = strcat(MANUAL_ANNOTATION_FOLDER, patient, "/", name, '.tiff');
         Igray = imread(filename);
     end
 

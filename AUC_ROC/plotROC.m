@@ -13,7 +13,7 @@ if flag=="penumbra"
     Y_p_sgd = [0, 0.726, 0.815, 0.862, 0.911, 0.931, 0.939, 0.947, 0.957, 0.969, 1];
 %     plot(X_p_adam, Y_p_adam, "-", 'DisplayName', "mJNet (ADAM)", "LineWidth", 3, "Color", "red");
     hold on
-    h(1) = plot(X_p_sgd, Y_p_sgd, "-", 'DisplayName', "mJNet (SGD)", "LineWidth", 3, "Color", "blue");
+    h(1) = plot(X_p_sgd, Y_p_sgd, "-", 'DisplayName', "mJ-Net (SGD)", "LineWidth", 3, "Color", "blue");
     %plot(1-0.88, 0.80, "-s", 'DisplayName', "ADAM longJ penumbra w/o back")
     
     auc_adam_nb = abs(trapz(X_p_adam,Y_p_adam));
@@ -32,7 +32,7 @@ elseif flag=="core"
 %     Y_c_sgd = [0, 0.368, 0.502, 0.605, 0.69, 0.578, 0.881, 0.91, 0.928, 0.952, 1];
 %     plot(X_c_adam, Y_c_adam, "-", 'DisplayName', "mJNet (ADAM)", "LineWidth", 3, "Color", "red");
     hold on
-    h(1) = plot(X_c_sgd, Y_c_sgd, "-", 'DisplayName', "mJNet (SGD)", "LineWidth", 3, "Color", "blue");
+    h(1) = plot(X_c_sgd, Y_c_sgd, "-", 'DisplayName', "mJ-Net (SGD)", "LineWidth", 3, "Color", "blue");
     %plot(1-0.97, 0.85, "-s", 'DisplayName', "ADAM longJ core w/o back")
     
     auc_adam_nb = abs(trapz(X_c_adam,Y_c_adam));
@@ -84,7 +84,7 @@ for suff = researchesValues.keys
 
                 suff_for_legend = strrep(suffix, "_", " ");
                 suff_for_legend = extractBefore(suff_for_legend, " ");
-                h(count) = plot(X_p_nb,Y_p_nb,"-", 'DisplayName',strcat(suff_for_legend, " "), "LineWidth", 2)
+                h(count) = plot(X_p_nb,Y_p_nb,"-", 'DisplayName',strcat(suff_for_legend, " "), "LineWidth", 2);
 
         %         auc = trapz(X_p,Y_p);
                 auc_adam_nb = abs(trapz(X_p_nb,Y_p_nb));
@@ -114,7 +114,7 @@ for suff = researchesValues.keys
 
                 suff_for_legend = strrep(suffix, "_", " ");
                 suff_for_legend = extractBefore(suff_for_legend, " ");
-                h(count) = plot(X_c_nb,Y_c_nb,"-",'DisplayName',strcat(suff_for_legend," "), "LineWidth", 2)
+                h(count) = plot(X_c_nb,Y_c_nb,"-",'DisplayName',strcat(suff_for_legend," "), "LineWidth", 2);
 
         %         auc = trapz(X_c,Y_c);
                 auc_adam_nb = abs(trapz(X_c_nb,Y_c_nb));
@@ -125,7 +125,7 @@ for suff = researchesValues.keys
         end
 
         legend('Location','southeast','NumColumns',2)
-        title(strcat("ROC - ", flag));
+%         title(strcat("AUC - ", flag));
         xlabel('False positive rate'); ylabel('True positive rate');
     end
 end

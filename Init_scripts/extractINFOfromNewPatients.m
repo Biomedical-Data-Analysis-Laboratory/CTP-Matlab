@@ -6,14 +6,18 @@ warning('off','all')
 %% WINDOWS 
 USER = 'C:\Users\Luca\';
 
-folder = strcat(USER,'Documents\SUS2020\');
-register_folder = strcat(USER, 'Desktop\SUS2020\');
+folder = 'D:\SUS2020_v2\';
+register_folder = 'D:\Preprocessed-SUS2020_v2\';
 patientsFolder = dir(fullfile(folder, '*/'));
-workspaceFolder = strcat(register_folder, 'Workspaces/');
+workspaceFolder = strcat(register_folder, 'Workspace_2/');
 rawDataFolder = strcat(register_folder, 'Parametric_Maps/');
 
-mkdir(rawDataFolder);
-mkdir(workspaceFolder);
+if ~isfolder(rawDataFolder)
+    mkdir(rawDataFolder);
+end
+if ~isfolder(workspaceFolder)
+    mkdir(workspaceFolder);
+end
 
 %% main function
 getMAINinfo(patientsFolder,rawDataFolder,workspaceFolder)

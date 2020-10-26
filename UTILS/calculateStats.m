@@ -1,4 +1,4 @@
-function calculateStats(stats,saveFolder,filename)
+function calculateStats(stats,saveFolder,filename,appendToSavedStats)
 %CALCULATESTATS Summary of this function goes here
 %   Detailed explanation goes here
 stats.Properties.VariableNames = {'name' ...
@@ -76,7 +76,7 @@ stats.f1_p_nb = (2.*(stats.precision_p_nb .* stats.sensitivity_p_nb) +1e-07)./(s
 stats.f1_c_nb = (2.*(stats.precision_c_nb .* stats.sensitivity_c_nb) +1e-07)./(stats.precision_c_nb + stats.sensitivity_c_nb+1e-07);
 stats.f1_pc_nb = (2.*(stats.precision_pc_nb .* stats.sensitivity_pc_nb) +1e-07)./(stats.precision_pc_nb + stats.sensitivity_pc_nb+1e-07);
 
-%% Jaccard index (NOT usefull)
+%% Jaccard index (NOT useful)
 % stats.jaccard_p = (stats.f1_p+1e-07)./(2-stats.f1_p+1e-07);
 % stats.jaccard_c = (stats.f1_c+1e-07)./(2-stats.f1_c+1e-07);
 % stats.jaccard_pc = (stats.f1_pc+1e-07)./(2-stats.f1_pc+1e-07);
@@ -84,8 +84,19 @@ stats.f1_pc_nb = (2.*(stats.precision_pc_nb .* stats.sensitivity_pc_nb) +1e-07).
 % stats.jaccard_c_nb = (stats.f1_c_nb+1e-07)./(2-stats.f1_c_nb+1e-07);
 % stats.jaccard_pc_nb = (stats.f1_pc_nb+1e-07)./(2-stats.f1_pc_nb+1e-07);
 
-%% save the workspace 
+if appendToSavedStats
+    tmpstats = stats;
+    load(strcat(saveFolder, filename), 'stats');
+    
+    stats(stats.name == tmpstats.name,:) = []; % remove the rows with the same name as the tmpstats
+    stats = [stats; tmpstats]; % append the row(s) calculated
+    
+    clear tmpstats
+end
+
+%% save the workspace
 save(strcat(saveFolder, filename));
+
 
 end
 

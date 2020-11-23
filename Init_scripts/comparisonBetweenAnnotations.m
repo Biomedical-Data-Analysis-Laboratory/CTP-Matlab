@@ -15,10 +15,10 @@ SAVED_MODELS_FOLDER = MAIN_PATH+"Workspace_thresholdingMethods\";
 
 stats = table();
 
-compare_folder = "D:\Preprocessed-SUS2020_v2\FINALIZE_PMS\FINALIZE_PM_Comparison_Kathinka\";
-name_workspace = "comparison_manual_annotation_Kathinka.mat";
-% compare_folder = strcat("D:\Preprocessed-SUS2020_v2\FINALIZE_PMS\FINALIZE_PM_Comparison_Liv\");
-% name_workspace = "comparison_manual_annotation_Liv.mat";
+% compare_folder = "D:\Preprocessed-SUS2020_v2\FINALIZE_PMS\FINALIZE_PM_Comparison_Kathinka\";
+% name_workspace = "comparison_manual_annotation_Kathinka.mat";
+compare_folder = strcat("D:\Preprocessed-SUS2020_v2\FINALIZE_PMS\FINALIZE_PM_Comparison_Liv\");
+name_workspace = "comparison_manual_annotation_Liv.mat";
 
 
 for folder = dir(compare_folder)'

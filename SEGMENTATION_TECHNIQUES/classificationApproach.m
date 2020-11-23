@@ -1,5 +1,6 @@
 function [tableData,nImages] = classificationApproach(realValueImages,skullMasks, ...
-    MANUAL_ANNOTATION_FOLDER, SUPERVISED_LEARNING, patient, n_fold, image_suffix, suffix, USESUPERPIXELS, N_SUPERPIXELS)
+    MANUAL_ANNOTATION_FOLDER, SUPERVISED_LEARNING, patient, n_fold, image_suffix, ...
+    suffix, USESUPERPIXELS, N_SUPERPIXELS)
 
 %CLASSIFICATIONAPPROACH Summary of this function goes here
 %   Detailed explanation goes here
@@ -59,8 +60,50 @@ for pm_idx = 1:size(realValueImages,1)
             end
             
             %% real values (0~1) 
+            % get only the pixel values inside the skull mask
             pm_mask = (imfill(realValueImages{pm_idx,index}) .* imfill(skullMasks{pm_idx,index})) + ((skullMasks{pm_idx,index}==0) .* multiplyBack);
-            V(:,:,index) = realValueImages{pm_idx,index};
+            
+            if USESUPERPIXELS>0 && USESUPERPIXELS<3 
+                V(:,:,index) = realValueImages{pm_idx,index};
+            end
+            
+            %% prepare the data --> superpixels 2D
+            if USESUPERPIXELS==3
+                
+                superpixel_fold = "D:/Preprocessed-SUS2020_v2/Workspace_thresholdingMethods/superpixel_example/2D_"+int2str(N_SUPERPIXELS)+"/";
+                 %% superpixels feature of the real values 
+                [L,N] = superpixels(realValueImages{pm_idx,index},N_SUPERPIXELS);
+                pm_mask_superpixels = meanSuperpixelsImage(realValueImages{pm_idx,index},L,N);
+                pm_mask_superpixels = (imfill(pm_mask_superpixels) .* imfill(skullMasks{pm_idx,index})) + ((skullMasks{pm_idx,index}==0) .* multiplyBack);
+                subfold = "";
+                if pm_idx==1 % == CBF
+                    cbf_superpixels = [cbf_superpixels, pm_mask_superpixels];
+                    subfold = "CBF/";
+                elseif pm_idx==2 % == CBV
+                    cbv_superpixels = [cbv_superpixels, pm_mask_superpixels];
+                    subfold = "CBV/";
+                elseif pm_idx==3 % == Tmax
+                    tmax_superpixels = [tmax_superpixels, pm_mask_superpixels];
+                    subfold = "TMAX/";
+                elseif pm_idx==4 % == TTP
+                    ttp_superpixels = [ttp_superpixels, pm_mask_superpixels];
+                    subfold = "TTP/";
+                end
+                                
+                if ispc % just save the images only if we are in the pc
+                     if ~isfolder(superpixel_fold)
+                         mkdir(superpixel_fold)
+                     end
+                    if ~isfolder(strcat(superpixel_fold, patient))
+                        mkdir(strcat(superpixel_fold, patient));
+                    end
+                    if ~isfolder(strcat(superpixel_fold, patient,"/",subfold))
+                        mkdir(strcat(superpixel_fold, patient,"/",subfold));
+                    end
+
+                    imwrite(pm_mask_superpixels, strcat(superpixel_fold, patient,"/",subfold, name, ".png"))
+                end
+            end
         end
         
         if pm_idx==1 % == CBF
@@ -79,21 +122,48 @@ for pm_idx = 1:size(realValueImages,1)
         end
     end
     
-    if USESUPERPIXELS
+    %% prepare the data --> superpixels 3D
+    if USESUPERPIXELS>0 && USESUPERPIXELS<3 
+        superpixel_fold = "D:/Preprocessed-SUS2020_v2/Workspace_thresholdingMethods/superpixel_example/3D_"+int2str(N_SUPERPIXELS)+"/";
         if pm_idx <= 4 % pm_idx = [CBF,CBV,Tmax,TTP] 
+            
             [L,N] = superpixels3(V,N_SUPERPIXELS);
+            
             pm_mask_superpixels = meanSuperpixelsImage(V,L,N);
             for x = 1:size(pm_mask_superpixels,3)
                 pm_mask_superpixel = (imfill(pm_mask_superpixels(:,:,x)) .* imfill(skullMasks{pm_idx,x})) + ((skullMasks{pm_idx,x}==0) .* multiplyBack);
-
+                subfold = "";
                 if pm_idx==1 % == CBF
                     cbf_superpixels = [cbf_superpixels, pm_mask_superpixel];
+                    subfold = "CBF/";
                 elseif pm_idx==2 % == CBV
                     cbv_superpixels = [cbv_superpixels, pm_mask_superpixel];
+                    subfold = "CBV/";
                 elseif pm_idx==3 % == Tmax
                     tmax_superpixels = [tmax_superpixels, pm_mask_superpixel];
+                    subfold = "TMAX/";
                 elseif pm_idx==4 % == TTP
                     ttp_superpixels = [ttp_superpixels, pm_mask_superpixel];
+                    subfold = "TTP/";
+                end
+                
+                name = num2str(x);
+                if length(name) == 1
+                    name = strcat("0", name);
+                end
+                
+                if ispc % just save the images only if we are in the pc
+                     if ~isfolder(superpixel_fold)
+                         mkdir(superpixel_fold)
+                     end
+                    if ~isfolder(strcat(superpixel_fold, patient))
+                        mkdir(strcat(superpixel_fold, patient));
+                    end
+                    if ~isfolder(strcat(superpixel_fold, patient,"/",subfold))
+                        mkdir(strcat(superpixel_fold, patient,"/",subfold));
+                    end
+
+                    imwrite(pm_mask_superpixel, strcat(superpixel_fold, patient,"/",subfold, name, ".png"))
                 end
             end
         end
@@ -195,7 +265,7 @@ indexPatient = ones(size(cbf(:))) .* str2double(pIndex);
 NIHSS = ones(size(cbf(:))) .* NIHSS_value;
 
 if USESUPERPIXELS
-    if USESUPERPIXELS==1
+    if USESUPERPIXELS==1 || USESUPERPIXELS==3
         tableData = table(indexPatient,...
             cbf(:),cbf_superpixels(:),...
             cbv(:),cbv_superpixels(:),...
@@ -209,7 +279,7 @@ if USESUPERPIXELS
             "ttp","ttp_superpixels",...
             "NIHSS","oldInfarction","weights",...
             "output","outputPenumbraCore","outputCore"]);
-    elseif USESUPERPIXELS==2
+    elseif USESUPERPIXELS==2 || USESUPERPIXELS==4
         tableData = table(indexPatient,cbf_superpixels(:),...
             cbv_superpixels(:),tmax_superpixels(:),...
             ttp_superpixels(:),NIHSS,...

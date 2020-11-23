@@ -1,4 +1,6 @@
-function [predictions,statsClassific] = mainExtractionFunc(patients,researchesValues,perfusionCTFolder,MANUAL_ANNOTATION_FOLDER,SAVED_MODELS_FOLDER,saveFolder,subsavefolder,subfolds,constants,workspaceFolder,appUIFIGURE)
+function [predictions,statsClassific] = mainExtractionFunc(patients,researchesValues,...
+    perfusionCTFolder,MANUAL_ANNOTATION_FOLDER,SAVED_MODELS_FOLDER,saveFolder,...
+    subsavefolder,subfolds,constants,workspaceFolder,appUIFIGURE)
 %MAINEXTRACTIONFUNC Extraction of the information of the patients 
 %   Function that performs different steps:
 %       0) for each researchesValues: 
@@ -37,6 +39,7 @@ TIFF_SUFFIX = constants.TIFF_SUFFIX; % use the .tiff suffix in the images
 SUFFIX_RES = constants.SUFFIX_RES; % 'SVM' // 'tree' // 'SVM_tree' 
 USE_UNIQUE_MODEL = constants.USE_UNIQUE_MODEL; % for creating a unque model and not passing through a cross-validation over the patiens
 THRESHOLDING = constants.THRESHOLDING;
+KEEPALLPENUMBRA = constants.KEEPALLPENUMBRA;
 USESUPERPIXELS = constants.USESUPERPIXELS;
 N_SUPERPIXELS = constants.N_SUPERPIXELS;
 SMOTE = constants.SMOTE;
@@ -47,7 +50,11 @@ STEPS = constants.STEPS;
 prefixForTable = "";
 
 if USESUPERPIXELS
-    prefixForTable = int2str(N_SUPERPIXELS)+"_";
+    if USESUPERPIXELS==1 || USESUPERPIXELS==2
+        prefixForTable = int2str(N_SUPERPIXELS)+"_";
+    elseif USESUPERPIXELS==3 || USESUPERPIXELS==4
+        prefixForTable = "2D_"+int2str(N_SUPERPIXELS)+"_";
+    end
 else
     prefixForTable = prefixForTable+"10_"; % default value if no superpixels involved
 end
@@ -243,7 +250,7 @@ for suff = researchesValues.keys
                     suffix,colorbarPointBottomX,colorbarPointTopX,penumbra_color,core_color,flag_PENUMBRACORE,SAVE_PAR_MAPS,count,perce, ...
                     combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks, ...
                     penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,imageMTT,stats,dayFold.name,...
-                    image_suffix, USESUPERPIXELS, N_SUPERPIXELS);
+                    image_suffix, USESUPERPIXELS, N_SUPERPIXELS, THRESHOLDING, KEEPALLPENUMBRA);
 
                 if subfold == subfolds(end)
                     totalNImages{1,p} = nImages;
@@ -253,14 +260,14 @@ for suff = researchesValues.keys
                     end
                     if ~LOAD_AND_PREDICT_PATIENT
                         if USESUPERPIXELS
-                            if USESUPERPIXELS==1
+                            if USESUPERPIXELS==1 || USESUPERPIXELS==3
                                 varnames = ["patient","cbf","cbf_superpixels",...
                                     "cbv","cbv_superpixels",...
                                     "tmax","tmax_superpixels",...
                                     "ttp","ttp_superpixels",...
                                     "NIHSS","oldInfarction","weights",...
                                     "output","outputPenumbraCore","outputCore","countRow"];
-                            elseif USESUPERPIXELS==2
+                            elseif USESUPERPIXELS==2 || USESUPERPIXELS==4
                                 varnames = ["patient","cbf_superpixels","cbv_superpixels",...
                                     "tmax_superpixels","ttp_superpixels",...
                                     "NIHSS","oldInfarction","weights",...
@@ -289,7 +296,7 @@ for suff = researchesValues.keys
                         indexPatient = ones(size(countRow,1),1) .* str2double(pIndex);
                         
                         if USESUPERPIXELS
-                            if USESUPERPIXELS==1
+                            if USESUPERPIXELS==1 || USESUPERPIXELS==3
                                 tableData = table(indexPatient,...
                                     uniqueTableData.cbf,uniqueTableData.cbf_superpixels,...
                                     uniqueTableData.cbv,uniqueTableData.cbv_superpixels,...
@@ -298,7 +305,7 @@ for suff = researchesValues.keys
                                     uniqueTableData.NIHSS,uniqueTableData.oldInfarction,uniqueTableData.weights,...
                                     uniqueTableData.output,uniqueTableData.outputPenumbraCore,uniqueTableData.outputCore,...
                                     countRow, 'VariableNames', varnames);
-                            elseif USESUPERPIXELS==2
+                            elseif USESUPERPIXELS==2 || USESUPERPIXELS==4
                                 tableData = table(indexPatient,...
                                     uniqueTableData.cbf_superpixels,...
                                     uniqueTableData.cbv_superpixels,...
@@ -339,7 +346,7 @@ for suff = researchesValues.keys
                                         'Class', tableData.output(inforInfarctedRows{infreg_idx,1}));
 
                                     indexPatient = ones(size(X,1),1) .* str2double(pIndex);
-                                    if USESUPERPIXELS==1
+                                    if USESUPERPIXELS==1 || USESUPERPIXELS==3
                                         sinthesizeTable = table(indexPatient,...
                                             X(:,1),X(:,2),X(:,3),X(:,4),X(:,5),X(:,6),X(:,7),X(:,8),X(:,9),X(:,10),...
                                             ones(size(X,1),1).*inforInfarctedRows{infreg_idx,3},C,...
@@ -561,7 +568,7 @@ for suff = researchesValues.keys
                                     coreMask = double(imread(strcat(saveFolder,patientSubFold,subsavefolder{1},new_suffix,"_",strimgidx,"_core.png")));
 
                                     statsClassific = statisticalInfo(statsClassific, new_suffix, penumbraMask, coreMask, ...
-                                        MANUAL_ANNOTATION_FOLDER, patient, img_idx, penumbra_color, core_color, flag_PENUMBRACORE, image_suffix);
+                                        MANUAL_ANNOTATION_FOLDER, patient, img_idx, penumbra_color, core_color, flag_PENUMBRACORE, image_suffix, 0, THRESHOLDING);
 
                                 end
                             end

@@ -1,6 +1,8 @@
-function finalizeParametricMaps(app)
+function stats = finalizeParametricMaps(app)
 %FINALIZEPARAMETRICMAPS Summary of this function goes here
 %   Detailed explanation goes here
+
+stats = table();
 
 finalizeFolder = "FINALIZE_PM/"; 
 if isfield(app,'finalizeFolder') % use to change the finalize folder 
@@ -22,6 +24,8 @@ colorbarPointY = 436;
 brain_color = 85;
 penumbra_color = brain_color*2;
 core_color = 255;
+image_suffix = ".tiff";
+
 
 if ispc % windows
     wb = uiprogressdlg(app.GUIAutomaticManualAnnotationsUIFigure,'Title','Please Wait',...
@@ -45,6 +49,7 @@ n_patients = numel(dir(app.patientspath))-2;
 count = 1;
 
 for patientFold = dir(app.patientspath)'
+    n_fold = 0;
     % exclude the previous folders and the patients already analyzed by Kathinka.
     if ~strcmp(patientFold.name, '.') && ~strcmp(patientFold.name, '..')
         
@@ -62,12 +67,15 @@ for patientFold = dir(app.patientspath)'
             && ~strcmp(patientFold.name, 'CTP_00_002') && ~strcmp(patientFold.name, 'CTP_00_006') && ~strcmp(patientFold.name, 'CTP_00_007') ...
             && ~strcmp(patientFold.name, 'CTP_00_009')) || option>1 
         
+        if sum(cellfun(@any,strfind(app.patients, patientFold.name)))>0
         for subfold = dir(patientFold.folder + "/" + patientFold.name)'
             processMIP = false; % flag to process MIP folder only if there are annotations
             if ~strcmp(subfold.name, '.') && ~strcmp(subfold.name, '..')
                 for pm_fold = dir(subfold.folder + "/" + subfold.name)'
                     if ~strcmp(pm_fold.name, '.') && ~strcmp(pm_fold.name, '..')
                         if strcmp(pm_fold.name, "Annotations")
+                            n_fold = n_fold+1;
+                            
                             annot_folder = dir(pm_fold.folder + "/" + pm_fold.name);
                             n_elem = numel(annot_folder)-2;
                             
@@ -78,7 +86,7 @@ for patientFold = dir(app.patientspath)'
                                     delete(strcat(app.mainSavepath,finalizeFolder,patientFold.name,"/*"));
                                 end
                                 
-                                name_indices = contains({annot_folder.name},use_suffix);
+                                name_indices = startsWith({annot_folder.name},use_suffix);
                                 % go here only if we have some indices that
                                 % correspond to the suffix
                                 for image = flip(annot_folder(name_indices)')
@@ -92,6 +100,25 @@ for patientFold = dir(app.patientspath)'
                                         type_annot = tmp_imgname{end};
 
                                         img = imread(image.folder+"/"+image.name);
+                                        
+                                        if ~app.KEEPALLPENUMBRA
+                                            %% if penumbra: keep only the largest area
+                                            if contains(type_annot,"penumbra")
+                                                mask = zeros(size(img));
+                                                labeledImg = bwlabel(img,8);
+                                                r = regionprops(logical(img));
+                                                allareas = [r.Area];
+
+                                                if ~isempty(allareas)
+                                                    keep_idx = find(allareas==max(allareas));
+                                                    for x = keep_idx
+                                                        mask = mask + (labeledImg==x);
+                                                    end
+                                                    img = mask;
+                                                end
+                                            end
+                                        end
+                                        
 
                                         new_annotationImage_name = strcat(app.mainSavepath,finalizeFolder,patientFold.name,"/",id,".tiff");
                                         if isfile(new_annotationImage_name)
@@ -116,6 +143,8 @@ for patientFold = dir(app.patientspath)'
                                         mapped_blank = im2uint16(blank_img./256);
 
                                         imwrite(mapped_blank,new_annotationImage_name);
+                                        
+                                        
                                     end
                                 end
                             end
@@ -131,7 +160,7 @@ for patientFold = dir(app.patientspath)'
                                 for image = mip_folder' 
                                     if ~strcmp(image.name, '.') && ~strcmp(image.name, '..')
                                         id = image.name;
-                                        id = replace(id,".png",".tiff");
+                                        id = replace(id,".png",image_suffix);
                                         
                                         new_annotationImage_name = strcat(app.mainSavepath,finalizeFolder,patientFold.name,"/",id);
                                         
@@ -161,6 +190,15 @@ for patientFold = dir(app.patientspath)'
                                             final = mask_final+blank_img;
 
                                             imwrite(final,new_annotationImage_name);
+                                            
+                                            if app.calculateSTATS        
+                                                calculateTogether = 1;
+                                                
+                                                stats = statisticalInfo(stats, strcat(use_suffix,"_",getIndexFromPatient(patientFold.name,n_fold)),...
+                                                    final, 0, app.MANUAL_ANNOTATION_FOLDER, patientFold.name, ...
+                                                    replace(id,image_suffix,""), penumbra_color, core_color, 1, ...
+                                                    image_suffix, calculateTogether, 0);
+                                            end
                                         end
                                     end
                                 end
@@ -170,9 +208,10 @@ for patientFold = dir(app.patientspath)'
                 end
             end
             
-            if processMIP
+            if processMIP                
                 break
             end
+        end
         end
     else
         % here we have the annotations made by Kathinka

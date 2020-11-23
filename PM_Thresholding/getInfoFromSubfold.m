@@ -4,7 +4,7 @@ function [combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundT
     suffix,colorbarPointBottomX,colorbarPointTopX,penumbra_color,core_color,flag_PENUMBRACORE,SAVE_PAR_MAPS,count,perce, ...
     combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks, ...
     penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,imageMTT,stats,dayFold,...
-    image_suffix,USESUPERPIXELS,N_SUPERPIXELS)
+    image_suffix,USESUPERPIXELS,N_SUPERPIXELS,THRESHOLDING, KEEPALLPENUMBRA)
 % GETINFOFROMSUBFOLD Extract the various images from the subfold
 %   For each subfold, extract the images and if the flag is set, it will
 %   cluster the images (last lines)
@@ -313,6 +313,9 @@ for x=1:size(sec,1)
             strpercentage = perce;
             if strpercentage==-1
                 new_suffix = suffix;
+                if THRESHOLDING
+                    new_suffix = strcat(new_suffix, "_", getIndexFromPatient(patient, n_fold));
+                end
             else
                 if strpercentage<10
                     strpercentage = strcat("00", num2str(perce));
@@ -325,8 +328,28 @@ for x=1:size(sec,1)
             end
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %% get the statistical information from the image
-            if SUPERVISED_LEARNING % only if we are doing supervised learning 
-                stats = statisticalInfo(stats, new_suffix, totalPenumbraMask{x}, totalCoreMask{x}, MANUAL_ANNOTATION_FOLDER, patient, x, penumbra_color, core_color, flag_PENUMBRACORE, image_suffix);
+            if SUPERVISED_LEARNING && THRESHOLDING % only if we are doing supervised learning 
+                calculateTogether = 0;
+                
+                % only keep the largest penumbra area if selected
+                if ~KEEPALLPENUMBRA
+                    mask = zeros(size(totalPenumbraMask{x}));
+                    labeledImg = bwlabel(totalPenumbraMask{x},8);
+                    r = regionprops(logical(totalPenumbraMask{x}));
+                    allareas = [r.Area];
+
+                    if ~isempty(allareas)
+                        keep_idx = find(allareas==max(allareas));
+                        for ii = keep_idx
+                            mask = mask + (labeledImg==ii);
+                        end
+                        totalPenumbraMask{x} = mask;
+                    end
+                end
+                
+                stats = statisticalInfo(stats, new_suffix, totalPenumbraMask{x}, ...
+                    totalCoreMask{x}, MANUAL_ANNOTATION_FOLDER, patient, x, penumbra_color, ...
+                    core_color, flag_PENUMBRACORE, image_suffix, calculateTogether, THRESHOLDING);
             end
         end
     end

@@ -11,9 +11,9 @@ end
 
 flagToSaveImage = 0;
 if USESUPERPIXELS
-    if USESUPERPIXELS==1
+    if USESUPERPIXELS==1 || USESUPERPIXELS==3
         predictorNames = {'tmax','tmax_superpixels','ttp','ttp_superpixels','oldInfarction','NIHSS'};
-    elseif USESUPERPIXELS==2
+    elseif USESUPERPIXELS==2 || USESUPERPIXELS==4
         predictorNames = {'tmax_superpixels','ttp_superpixels','oldInfarction','NIHSS'};
     end
 else
@@ -35,10 +35,10 @@ for step=1:STEPS
         flagToSaveImage = 1;
         if STEPS == 1 % use ALL predictors because we classify penumbra&core together
             if USESUPERPIXELS
-                if USESUPERPIXELS==1
+                if USESUPERPIXELS==1 || USESUPERPIXELS==3
                     predictorNames = {'tmax','tmax_superpixels','ttp','ttp_superpixels','cbv',...
                         'cbv_superpixels','cbf','cbf_superpixels','oldInfarction','NIHSS'};
-                elseif USESUPERPIXELS==2
+                elseif USESUPERPIXELS==2 || USESUPERPIXELS==4
                     predictorNames = {'tmax_superpixels','ttp_superpixels',...
                         'cbv_superpixels','cbf_superpixels','oldInfarction','NIHSS'};
                 end
@@ -52,9 +52,9 @@ for step=1:STEPS
             
         else % use the core predictor names
             if USESUPERPIXELS
-                if USESUPERPIXELS==1
+                if USESUPERPIXELS==1 || USESUPERPIXELS==3
                     predictorNames = {'cbv','cbv_superpixels','cbf','cbf_superpixels','NIHSS'};            
-                elseif USESUPERPIXELS==2
+                elseif USESUPERPIXELS==2 || USESUPERPIXELS==4
                     predictorNames = {'cbv_superpixels','cbf_superpixels','NIHSS'};
                 end
             else

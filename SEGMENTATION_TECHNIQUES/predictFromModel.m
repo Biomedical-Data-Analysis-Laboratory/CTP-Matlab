@@ -69,7 +69,7 @@ for t=1:nImages
         regions_params(2).mask = zeros(512);
         regions_params(2).name = "core";
         regions_params(2).threshold = 250;
-        regions_params(2).area = 10;
+        regions_params(2).area = 0;
         regions_params(2).color = 'r';
         
         %% find the masks for penumbra and core based on the information above
@@ -117,10 +117,8 @@ for t=1:nImages
             %% get the statistical information for the clssified image compared with the manual annotation
             % return of the function !
             statsClassific = statisticalInfo(statsClassific, suffix, regions_params(1).mask, regions_params(2).mask, ...
-                MANUAL_ANNOTATION_FOLDER, patient(1:10), t, penumbra_color, core_color, 1, image_suffix);
-            
-            disp(statsClassific{end,1:5});
-            
+                MANUAL_ANNOTATION_FOLDER, patient(1:10), t, penumbra_color, core_color, 1, image_suffix, 0, 0);
+                        
             %% save the image with boundaries
             if SHOW_IMAGES
                 visboundaries(I_penumbra,'Color',[1,1,1] * (penumbra_color/255)); 

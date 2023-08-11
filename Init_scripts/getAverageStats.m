@@ -8,31 +8,32 @@ close all force;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% VARIABLES
 MAIN_PATH = "D:\Preprocessed-SUS2020_v2\";
-SAVED_MODELS_FOLDER = MAIN_PATH+"Workspace_thresholdingMethods\_v3\";
-
-%SAVED_MODELS_FOLDER = "C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\";
+workspace_dir = "Workspace_thresholdingMethods"; % Workspace_thresholdingMethods
+SAVED_MODELS_FOLDER = MAIN_PATH+workspace_dir+"\MODELS_biggertrain_HYPER\";
+% SAVED_MODELS_FOLDER = "C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\";
+%SAVED_MODELS_FOLDER = "/Users/lucatomasetti/OneDrive - Universitetet i Stavanger/Luca/PhD/MATLAB_CODE/";
 
 constants.SUFFIX_RES = 'randomForest'; % 'SVM' // 'tree' // 'randomForest' 
 constants.STEPS = 1; % or 2 steps to divide penumbra and core prediction
-constants.USESUPERPIXELS = 1; % set the variable == 2 for using ONLY the suprpixels features
-constants.N_SUPERPIXELS = 450;
-constants.SMOTE = 1;
-constants.TEST_SECRETDATASET = 0;
+constants.USESUPERPIXELS = 1; % set the variable == 2 for using ONLY the superpixels features
+constants.N_SUPERPIXELS = 200;
+constants.SMOTE = 0;
+constants.TEST_SECRETDATASET = 1;
 constants.MORE_TRAINING_DATA = 1;
 constants.overlapName = ""; %"LIVKATHINKA";
 constants.SUMSTATS = 1;
 constants.KEEPALLPENUMBRA = 1;
 
-constants.THRESHOLDING = 0;
-research_name = "Shaefer_2014";
+constants.THRESHOLDING = 1;
+research_name = "Murphy_2006";
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 prefix = "";
-add = "_v3";
+add = "_HYPER";
 
 if constants.MORE_TRAINING_DATA
-    SAVED_MODELS_FOLDER = MAIN_PATH+"Workspace_thresholdingMethods\MODELS_biggertrain\_v3\";
+    SAVED_MODELS_FOLDER = MAIN_PATH+workspace_dir+"\MODELS_biggertrain"+add+"\";
 end
 
 secretdataset_prefix = "";
@@ -70,27 +71,27 @@ end
 
 if constants.THRESHOLDING
     if ~constants.KEEPALLPENUMBRA
-        SAVED_MODELS_FOLDER = MAIN_PATH+"Workspace_thresholdingMethods\KEEPONLYLARGEPENUMBRA\";
+        SAVED_MODELS_FOLDER = MAIN_PATH+workspace_dir+"\KEEPONLYLARGEPENUMBRA\";
     end
     name = research_name;
     
     load(strcat(SAVED_MODELS_FOLDER, strcat("Wintermark_2006", "_stats")),"stats");
     calculateStats(stats,SAVED_MODELS_FOLDER,strcat(secretdataset_prefix,"finalize-stats_","Wintermark_2006",add,".mat"),0)
     
-    
     filename = strcat(secretdataset_prefix,"finalize-stats_","Wintermark_2006",add,".mat");
 else
     if constants.KEEPALLPENUMBRA
-        SAVED_MODELS_FOLDER = MAIN_PATH+"Workspace_thresholdingMethods\AllP__v3\";
+        SAVED_MODELS_FOLDER = MAIN_PATH+workspace_dir+"\AllP__v3\";
        if constants.MORE_TRAINING_DATA
-           SAVED_MODELS_FOLDER = MAIN_PATH+"Workspace_thresholdingMethods\MODELS_biggertrain\AllP__v3\";
+           SAVED_MODELS_FOLDER = MAIN_PATH+workspace_dir+"\MODELS_biggertrain\AllP__v3\";
        end
     end
    
     filename = strcat(secretdataset_prefix,"finalize-stats_",name,add,".mat");
 end
 
-% filename = strcat(secretdataset_prefix,"statsClassific_",name,add,".mat");
+%filename = strcat(secretdataset_prefix,"statsClassific_",name,add,".mat");
+filename = strcat(secretdataset_prefix,"statsClassific_",name,".mat");
 
 load(strcat(SAVED_MODELS_FOLDER, filename),"stats");
 
@@ -135,24 +136,34 @@ if constants.THRESHOLDING
         spec_exc = "";
         prec_exc = "";
         acc_exc = "";
+        tn_acc = 0;
+        fn_acc = 0;
+        fp_acc = 0;
+        tp_acc = 0;
+
         for t=types'
             fprintf("& %s ",t(1));
             tn = 0;
             fn = 0;
             fp = 0;
             tp = 0;
+            
             for s=statsToEvaluate
                 
                 if contains(s,t(2))
                     if constants.SUMSTATS
                         if contains(s,"tn")
                             tn = sum(stat.(s));
+                            tn_acc = tn_acc + sum(stat.(s));
                         elseif contains(s,"fn")
                             fn = sum(stat.(s));
+                            fn_acc = fn_acc + sum(stat.(s));
                         elseif contains(s,"fp")
                             fp = sum(stat.(s));
+                            fp_acc = fp_acc + sum(stat.(s));
                         elseif contains(s,"tp")
                             tp = sum(stat.(s));
+                            tp_acc = tp_acc + sum(stat.(s));
                         end
                     else
                         fprintf("& %3.3f ",mean(stat.(s)));
@@ -163,8 +174,6 @@ if constants.THRESHOLDING
             if constants.SUMSTATS
                 prec = tp/(tp+fp);
                 rec = tp/(tp+fn);
-%                 spec = tn/(tn+fp);
-                acc = (tp+tn)/(tp+tn+fp+fn);
                 f1 = 2*((prec*rec)/(prec+rec));
 
                 if isnan(prec)
@@ -173,25 +182,31 @@ if constants.THRESHOLDING
                 if isnan(rec)
                     rec = 0;
                 end
-%                 if isnan(spec)
-%                     spec = 0;
-%                 end
-                if isnan(acc)
-                    acc = 0;
-                end
                 if isnan(f1)
                     f1 = 0;
                 end
 
                 f1_exc = f1_exc + string(round(f1,3)) + " \t";
                 sens_exc = sens_exc + string(round(rec,3)) + " \t";
-%                 spec_exc = spec_exc + string(round(spec,3)) + " \t";
                 prec_exc = prec_exc + string(round(prec,3)) + " \t";
-                acc_exc = acc_exc + string(round(acc,3)) + " \t";
             end
             fprintf("\n");
         end
+        acc = (tp_acc+tn_acc)/(tp_acc+tn_acc+fp_acc+fn_acc);
+        if isnan(acc)
+            acc = 0;
+        end
+        acc_exc = acc_exc + string(round(acc,3)) + " \t";
         fprintf(f1_exc+sens_exc+spec_exc+prec_exc+acc_exc+"\n");
+        
+        tn_acc_1 = 0;
+        fn_acc_1 = 0;
+        fp_acc_1 = 0;
+        tp_acc_1 = 0;
+        tn_acc_2 = 0;
+        fn_acc_2 = 0;
+        fp_acc_2 = 0;
+        tp_acc_2 = 0;
         
         for t=types'
             % Check severity only for the research saved in name!
@@ -208,11 +223,9 @@ if constants.THRESHOLDING
                         end
                         f1_exc = "";
                         sens_exc = "";
-                        spec_exc = "";
                         prec_exc = "";
                         acc_exc = "";
-                        fprintf("SEVERITY: %s \n\n",severity);
-                        fprintf("& %s ",t(1));
+                        fprintf("SEVERITY: %s \t %s \n",severity, t(1));
                         
                         tn = 0;
                         fn = 0;
@@ -224,12 +237,32 @@ if constants.THRESHOLDING
                                 if constants.SUMSTATS
                                     if contains(s,"tn")
                                         tn = sum(stat.(s)(indexSeverity));
+                                        if strcmp(severity,"02")
+                                            tn_acc_2 = tn_acc_2 + sum(stat.(s)(indexSeverity));
+                                        elseif strcmp(severity,"01")
+                                            tn_acc_1 = tn_acc_1 + sum(stat.(s)(indexSeverity));
+                                        end
                                     elseif contains(s,"fn")
                                         fn = sum(stat.(s)(indexSeverity));
+                                        if strcmp(severity,"02")
+                                            fn_acc_2 = fn_acc_2 + sum(stat.(s)(indexSeverity));
+                                        elseif strcmp(severity,"01")
+                                            fn_acc_1 = fn_acc_1 + sum(stat.(s)(indexSeverity));
+                                        end
                                     elseif contains(s,"fp")
                                         fp = sum(stat.(s)(indexSeverity));
+                                        if strcmp(severity,"02")
+                                            fp_acc_2 = fp_acc_2 + sum(stat.(s)(indexSeverity));
+                                        elseif strcmp(severity,"01")
+                                            fp_acc_1 = fp_acc_1 + sum(stat.(s)(indexSeverity));
+                                        end
                                     elseif contains(s,"tp")
                                         tp = sum(stat.(s)(indexSeverity));
+                                        if strcmp(severity,"02")
+                                            tp_acc_2 = tp_acc_2 + sum(stat.(s)(indexSeverity));
+                                        elseif strcmp(severity,"01")
+                                            tp_acc_1 = tp_acc_1 + sum(stat.(s)(indexSeverity));
+                                        end
                                     end
                                 else
                                     fprintf("& %3.3f ",mean(stats.(s)(indexSeverity)));
@@ -240,7 +273,6 @@ if constants.THRESHOLDING
                         if constants.SUMSTATS
                             prec = tp/(tp+fp);
                             rec = tp/(tp+fn);
-%                             spec = tn/(tn+fp);
                             acc = (tp+tn)/(tp+tn+fp+fn);
                             f1 = 2*((prec*rec)/(prec+rec));
 
@@ -250,9 +282,6 @@ if constants.THRESHOLDING
                             if isnan(rec)
                                 rec = 0;
                             end
-%                             if isnan(spec)
-%                                 spec = 0;
-%                             end
                             if isnan(acc)
                                 acc = 0;
                             end
@@ -262,12 +291,11 @@ if constants.THRESHOLDING
 
                             f1_exc = f1_exc + string(round(f1,3)) + " \t";
                             sens_exc = sens_exc + string(round(rec,3)) + " \t";
-%                             spec_exc = spec_exc + string(round(spec,3)) + " \t";
                             prec_exc = prec_exc + string(round(prec,3)) + " \t";
                             acc_exc = acc_exc + string(round(acc,3)) + " \t";
                         end
                         
-                        fprintf(string(round(f1,3))+ " & " + string(round(rec,3)) + " & " + string(round(prec,3)) + " & " +  string(round(acc,3)) + " \n"); 
+                        fprintf(string(round(f1,3))+ " & " + string(round(rec,3)) + " & " + string(round(prec,3)) + " & " + string(round(acc,3))); 
                         
                         fprintf("\n");
                         
@@ -276,6 +304,13 @@ if constants.THRESHOLDING
                 end
             end
         end
+        
+        if constants.SUMSTATS && contains(stat.name{1}, name)
+            acc_1 = (tp_acc_1+tn_acc_1)/(tp_acc_1+tn_acc_1+fp_acc_1+fn_acc_1);
+            acc_2 = (tp_acc_2+tn_acc_2)/(tp_acc_2+tn_acc_2+fp_acc_2+fn_acc_2);
+            fprintf(" --- " + string(round(acc_1,3))+ " & " + string(round(acc_2,3)) + "\n")
+        end
+        
     end
     
 else
@@ -286,6 +321,12 @@ else
     spec_exc = "";
     prec_exc = "";
     acc_exc = "";
+    f1_exc_notab = "";
+    sens_exc_notab = "";
+    spec_exc_notab = "";
+    prec_exc_notab = "";
+    acc_exc_notab = "";
+
 
     for t=types'
         tn = 0;
@@ -312,13 +353,10 @@ else
                     end
                 else
                     fprintf("& %3.3f ",mean(stats.(s)));
-                    %fprintf("(%3.2f) ", std(stats.(s)));
                     if contains(s,"f1_")
                         f1_exc = f1_exc + string(round(mean(stats.(s)),3)) + " \t";
                     elseif contains(s,"sensitivity_")
                         sens_exc = sens_exc + string(round(mean(stats.(s)),3)) + " \t";
-%                     elseif contains(s,"specificity_")
-%                         spec_exc = spec_exc + string(round(mean(stats.(s)),3)) + " \t";
                     elseif contains(s,"precision_")
                         prec_exc = prec_exc + string(round(mean(stats.(s)),3)) + " \t";
                     elseif contains(s,"accuracy_")
@@ -352,15 +390,18 @@ else
 
             f1_exc = f1_exc + string(round(f1,3)) + " \t";
             sens_exc = sens_exc + string(round(rec,3)) + " \t";
-%             spec_exc = spec_exc + string(round(spec,3)) + " \t";
             prec_exc = prec_exc + string(round(prec,3)) + " \t";
             acc_exc = acc_exc + string(round(acc,3)) + " \t";
+            f1_exc_notab = f1_exc_notab + string(round(f1,3)) + ", ";
+            sens_exc_notab = sens_exc_notab + string(round(rec,3)) + ", ";
+            prec_exc_notab = prec_exc_notab + string(round(prec,3)) + ", ";
+            acc_exc_notab = acc_exc_notab + string(round(acc,3)) + ", ";
         end
         fprintf("\n");
     end
 
-    fprintf(f1_exc+sens_exc+spec_exc+prec_exc+acc_exc+"\n");
-
+    fprintf(replace(f1_exc+sens_exc+spec_exc+prec_exc+acc_exc+"\n", ".", ","));
+    fprintf(f1_exc_notab+sens_exc_notab+spec_exc_notab+prec_exc_notab+acc_exc_notab+"\n");
     %% divided by severity (LVO, SVO, WVO)
     if ~strcmp(constants.overlapName,"")
         name = "tree";
@@ -368,10 +409,19 @@ else
     index = split(stats.name,name);
     index = index(:,2);
     severities = extractBetween(index', 3,4);
+    tn_acc_1 = 0;
+    fn_acc_1 = 0;
+    fp_acc_1 = 0;
+    tp_acc_1 = 0;
+    tn_acc_2 = 0;
+    fn_acc_2 = 0;
+    fp_acc_2 = 0;
+    tp_acc_2 = 0;
+
+    
     for severity = unique(severities)
         f1_exc = "";
         sens_exc = "";
-        spec_exc = "";
         prec_exc = "";
         acc_exc = "";
 
@@ -398,12 +448,32 @@ else
                         if constants.SUMSTATS
                             if contains(s,"tn")
                                 tn = sum(stats.(s)(indexSeverity));
+                                if strcmp(severity,"02")
+                                    tn_acc_2 = tn_acc_2 + sum(stats.(s)(indexSeverity));
+                                elseif strcmp(severity,"01")
+                                    tn_acc_1 = tn_acc_1 + sum(stats.(s)(indexSeverity));
+                                end
                             elseif contains(s,"fn")
                                 fn = sum(stats.(s)(indexSeverity));
+                                if strcmp(severity,"02")
+                                    fn_acc_2 = fn_acc_2 + sum(stats.(s)(indexSeverity));
+                                elseif strcmp(severity,"01")
+                                    fn_acc_1 = fn_acc_1 + sum(stats.(s)(indexSeverity));
+                                end
                             elseif contains(s,"fp")
                                 fp = sum(stats.(s)(indexSeverity));
+                                if strcmp(severity,"02")
+                                    fp_acc_2 = fp_acc_2 + sum(stats.(s)(indexSeverity));
+                                elseif strcmp(severity,"01")
+                                    fp_acc_1 = fp_acc_1 + sum(stats.(s)(indexSeverity));
+                                end
                             elseif contains(s,"tp")
                                 tp = sum(stats.(s)(indexSeverity));
+                                if strcmp(severity,"02")
+                                    tp_acc_2 = tp_acc_2 + sum(stats.(s)(indexSeverity));
+                                elseif strcmp(severity,"01")
+                                    tp_acc_1 = tp_acc_1 + sum(stats.(s)(indexSeverity));
+                                end
                             end
                         else
                             fprintf("& %3.3f ",mean(stats.(s)(indexSeverity)));
@@ -411,8 +481,6 @@ else
                                 f1_exc = f1_exc + string(round(mean(stats.(s)(indexSeverity)),3)) + " \t";
                             elseif contains(s,"sensitivity_")
                                 sens_exc = sens_exc + string(round(mean(stats.(s)(indexSeverity)),3)) + " \t";
-%                             elseif contains(s,"specificity_")
-%                                 spec_exc = spec_exc + string(round(mean(stats.(s)(indexSeverity)),3)) + " \t";
                             elseif contains(s,"precision_")
                                 prec_exc = prec_exc + string(round(mean(stats.(s)(indexSeverity)),3)) + " \t";
                             elseif contains(s,"accuracy_")
@@ -424,7 +492,6 @@ else
                 if constants.SUMSTATS
                     prec = tp/(tp+fp);
                     rec = tp/(tp+fn);
-                    spec = tn/(tn+fp);
                     acc = (tp+tn)/(tp+tn+fp+fn);
                     f1 = 2*((prec*rec)/(prec+rec));
 
@@ -433,9 +500,6 @@ else
                     end
                     if isnan(rec)
                         rec = 0;
-                    end
-                    if isnan(spec)
-                        spec = 0;
                     end
                     if isnan(acc)
                         acc = 0;
@@ -446,7 +510,6 @@ else
 
                     f1_exc = f1_exc + string(round(f1,3)) + " \t";
                     sens_exc = sens_exc + string(round(rec,3)) + " \t";
-%                     spec_exc = spec_exc + string(round(spec,3)) + " \t";
                     prec_exc = prec_exc + string(round(prec,3)) + " \t";
                     acc_exc = acc_exc + string(round(acc,3)) + " \t";
                 end
@@ -454,7 +517,13 @@ else
             end
         end
 
-        fprintf(f1_exc+sens_exc+spec_exc+prec_exc+acc_exc+"\n");
+        fprintf(replace(f1_exc+sens_exc+spec_exc+prec_exc+acc_exc+"\n", ".",","));
+    end
+    
+    if constants.SUMSTATS && contains(stats.name{1}, name)
+        acc_1 = (tp_acc_1+tn_acc_1)/(tp_acc_1+tn_acc_1+fp_acc_1+fn_acc_1);
+        acc_2 = (tp_acc_2+tn_acc_2)/(tp_acc_2+tn_acc_2+fp_acc_2+fn_acc_2);
+        fprintf(" --- " + string(round(acc_1,3))+ " & " + string(round(acc_2,3)) + "\n")
     end
 end
 

@@ -1,4 +1,4 @@
-function [information, informationValues] = getDICOMinfo(mainFolder, field, patFolder)
+function [information, informationValues] = getDICOMinfo(mainFolder, field, patFolder, patDWIFolder)
 %GETDICOMINFO Extract the info from the DICOM folder
 %   Function that extract the information of the patient and his/her
 %   treatment using the DICOM headers in each of the folders' study.
@@ -15,6 +15,9 @@ function [information, informationValues] = getDICOMinfo(mainFolder, field, patF
     information.HalskarFolder = "";
     information.CTCaputFolder = "";
     information.MRIISOREGFolder = "";
+    information.MRIISODREGFolder = "";
+    information.MRIEP2DFolder = "";
+    information.MRIAxDWIFolder = "";
     information.MRIdADCFolder = "";
     information.MRIT2starFolder = "";
     information.CTPfolder5mm = "";
@@ -83,6 +86,7 @@ function [information, informationValues] = getDICOMinfo(mainFolder, field, patF
     informationValues.PERFUSIONCT5.ContentTime = "";
     informationValues.PERFUSIONCT5.ColorType = "";
     informationValues.PERFUSIONCT5.AcquisitionDate = "";
+    informationValues.PERFUSIONCT5.PixelSpacing = "";
     % PERFUSION CT parameters 1.5mm
     informationValues.PERFUSIONCT1point5.patientFolder = mainFolder.name;
     informationValues.PERFUSIONCT1point5.SliceThickness = "";
@@ -105,13 +109,20 @@ function [information, informationValues] = getDICOMinfo(mainFolder, field, patF
     informationValues.MRI.StudyDescription = "";
     informationValues.MRI.filenameISOREG = "";
     informationValues.MRI.SeriesDescriptionISOREG = "";
+    informationValues.MRI.filenameISODREG = "";
+    informationValues.MRI.SeriesDescriptionISODREG = "";
+    informationValues.MRI.filenameEP2D = "";
+    informationValues.MRI.SeriesDescriptionEP2D = "";
+    informationValues.MRI.filenameAxDWI = "";
+    informationValues.MRI.SeriesDescriptionAxDWI = "";
     informationValues.MRI.filenameT2star = "";
     informationValues.MRI.SeriesDescriptionT2star = "";
     informationValues.MRI.filenameDADC = "";
     informationValues.MRI.SeriesDescriptionDADC = "";
+    informationValues.MRI.SliceThickness = "";
 
     for subPatientFold = patientsFolder'
-        if ~strcmp(subPatientFold.name, '.') && ~strcmp(subPatientFold.name, '..')           
+        if ~strcmp(subPatientFold.name, '.') && ~strcmp(subPatientFold.name, '..') && ~strcmp(subPatientFold.name, '.DS_Store')             
             if isfolder(fullfile(subPatientFold.folder, subPatientFold.name)) && strcmp(subPatientFold.name, 'DICOM') %, 'DICOM'))
                 dicomFolder = dir((fullfile(subPatientFold.folder, subPatientFold.name))); %, 'DICOM')));
                               
@@ -168,81 +179,83 @@ function [information, informationValues] = getDICOMinfo(mainFolder, field, patF
                                     delete(fullfile(dicomFile.folder, f.name));
                                 end
                             end
-                         end
+                        end
 
-                         %% for searching the parametric maps
-                         for pm = parametricMaps                           
-                             if contains(info.SeriesDescription, pm) && contains(info.SeriesDescription, 'RGB')
-                                 
-%                                  % display information descripition 
-%                                 disp(info.SeriesDescription);
-%                                 disp(numel(dir(dicomFile.folder)')-2);
-
-                                % check if they have a date (in the folder description) and extract it if necessary
-                                indexDate = strfind(info.SeriesDescription, "#");
-                                if isempty(indexDate)
-                                    dayAndHour = "no_date";
-                                else
-                                    dayAndHour = extractAfter(info.SeriesDescription, indexDate);
-                                end
-                                
-                                fieldPMname = "f_"+replace(convertCharsToStrings(dayAndHour),["-","(",")"," "],["","","",""]);
-                                
-                                if ~isfield(informationValues.PARAMETRICMAPS.pm, fieldPMname)
-                                    informationValues.PARAMETRICMAPS.pm.(fieldPMname) = struct;
-                                end
-                                
-                                informationValues.PARAMETRICMAPS.pm.(fieldPMname).(pm) = dicomFile.folder;
-                                % create the folders
-                                mkdir(strcat(patFolder, "/", dayAndHour));
-                                if isfolder(strcat(patFolder, "/", dayAndHour, "/", pm))
-                                    if numel(dir(strcat(patFolder, "/", dayAndHour, "/", pm))')-2 ~= numel(dir(dicomFile.folder)')-2
-                                        disp(patFolder);
-                                        disp(strcat("REMOVE: ", num2str(numel(dir(strcat(patFolder, "/", dayAndHour, "/", pm))')-2)));
-                                        disp(strcat("INSERT: ", num2str(numel(dir(dicomFile.folder)')-2)));
-                                    end
-                                    rmdir(strcat(patFolder, "/", dayAndHour, "/", pm, "/"), "s");
-                                end
-                                mkdir(strcat(patFolder, "/", dayAndHour, "/", pm));
-
-                                flagStartZero = 0;
-                                for el = dir(dicomFile.folder)'
-                                    if ~strcmp(el.name, '.') && ~strcmp(el.name, '..') && ~contains(el.name, '._')  
-                                        info = dicominfo(fullfile(dicomFile.folder, el.name));
-                                        image = dicomread(fullfile(dicomFile.folder, el.name));
-
-                                        imgidx = num2str(info.InstanceNumber);
-                                        if info.InstanceNumber<10
-                                            if info.InstanceNumber == 0
-                                                flagStartZero = 1;
-                                            end
-                                            imgidx = strcat("0", num2str(info.InstanceNumber));
-                                        end
-
-                                        imwrite(mat2gray(image), strcat(patFolder, "/", dayAndHour, "/", pm, "/", imgidx, ".png"));  
-                                    end
-                                end
-
-                                % rename all the images if they start with 00
-                                if flagStartZero
-                                    mkdir(strcat(patFolder, "/", dayAndHour, "/tmp_", pm, "/"))
-                                    movefile(strcat(patFolder, "/", dayAndHour, "/", pm, "/*"), strcat(patFolder, "/", dayAndHour, "/tmp_", pm))
-                                    files = dir(strcat(patFolder, "/", dayAndHour, "/tmp_", pm, "/*.png"));
-                                    for fn_id = 1:length(files)
-                                        [~, f] = fileparts(files(fn_id).name);
-                                        num = num2str(str2double(f)+1);
-                                        if str2double(f)+1<10
-                                            num = strcat("0", num);
-                                        end
-                                        movefile(strcat(files(fn_id).folder, "/", files(fn_id).name), strcat(patFolder, "/", dayAndHour, "/", pm, "/", num, ".png"))
-                                    end
-                                end
-
-                                if exist(strcat(patFolder, "/", dayAndHour, "/tmp_", pm, "/"),'dir')
-                                    rmdir(strcat(patFolder, "/", dayAndHour, "/tmp_", pm, "/"))
-                                end
-                             end
-                         end
+                         %% for searching the parametric maps if not in unix
+%                          if ~isunix || ismac
+%                             for pm = parametricMaps                           
+%                              if contains(info.SeriesDescription, pm) && contains(info.SeriesDescription, 'RGB')
+%                                  
+% %                                  % display information descripition 
+% %                                 disp(info.SeriesDescription);
+% %                                 disp(numel(dir(dicomFile.folder)')-2);
+% 
+%                                 % check if they have a date (in the folder description) and extract it if necessary
+%                                 indexDate = strfind(info.SeriesDescription, "#");
+%                                 if isempty(indexDate)
+%                                     dayAndHour = "no_date";
+%                                 else
+%                                     dayAndHour = extractAfter(info.SeriesDescription, indexDate);
+%                                 end
+%                                 
+%                                 fieldPMname = "f_"+replace(convertCharsToStrings(dayAndHour),["-","(",")"," "],["","","",""]);
+%                                 
+%                                 if ~isfield(informationValues.PARAMETRICMAPS.pm, fieldPMname)
+%                                     informationValues.PARAMETRICMAPS.pm.(fieldPMname) = struct;
+%                                 end
+%                                 
+%                                 informationValues.PARAMETRICMAPS.pm.(fieldPMname).(pm) = dicomFile.folder;
+%                                 % create the folders
+%                                 mkdir(strcat(patFolder, "/", dayAndHour));
+%                                 if isfolder(strcat(patFolder, "/", dayAndHour, "/", pm))
+%                                     if numel(dir(strcat(patFolder, "/", dayAndHour, "/", pm))')-2 ~= numel(dir(dicomFile.folder)')-2
+%                                         disp(patFolder);
+%                                         disp(strcat("REMOVE: ", num2str(numel(dir(strcat(patFolder, "/", dayAndHour, "/", pm))')-2)));
+%                                         disp(strcat("INSERT: ", num2str(numel(dir(dicomFile.folder)')-2)));
+%                                     end
+%                                     rmdir(strcat(patFolder, "/", dayAndHour, "/", pm, "/"), "s");
+%                                 end
+%                                 mkdir(strcat(patFolder, "/", dayAndHour, "/", pm));
+% 
+%                                 flagStartZero = 0;
+%                                 for el = dir(dicomFile.folder)'
+%                                     if ~strcmp(el.name, '.') && ~strcmp(el.name, '..') && ~contains(el.name, '._')  
+%                                         info = dicominfo(fullfile(dicomFile.folder, el.name));
+%                                         image = dicomread(fullfile(dicomFile.folder, el.name));
+% 
+%                                         imgidx = num2str(info.InstanceNumber);
+%                                         if info.InstanceNumber<10
+%                                             if info.InstanceNumber == 0
+%                                                 flagStartZero = 1;
+%                                             end
+%                                             imgidx = strcat("0", num2str(info.InstanceNumber));
+%                                         end
+% 
+%                                         imwrite(mat2gray(image), strcat(patFolder, "/", dayAndHour, "/", pm, "/", imgidx, ".png"));  
+%                                     end
+%                                 end
+% 
+%                                 % rename all the images if they start with 00
+%                                 if flagStartZero
+%                                     mkdir(strcat(patFolder, "/", dayAndHour, "/tmp_", pm, "/"))
+%                                     movefile(strcat(patFolder, "/", dayAndHour, "/", pm, "/*"), strcat(patFolder, "/", dayAndHour, "/tmp_", pm))
+%                                     files = dir(strcat(patFolder, "/", dayAndHour, "/tmp_", pm, "/*.png"));
+%                                     for fn_id = 1:length(files)
+%                                         [~, f] = fileparts(files(fn_id).name);
+%                                         num = num2str(str2double(f)+1);
+%                                         if str2double(f)+1<10
+%                                             num = strcat("0", num);
+%                                         end
+%                                         movefile(strcat(files(fn_id).folder, "/", files(fn_id).name), strcat(patFolder, "/", dayAndHour, "/", pm, "/", num, ".png"))
+%                                     end
+%                                 end
+% 
+%                                 if exist(strcat(patFolder, "/", dayAndHour, "/tmp_", pm, "/"),'dir')
+%                                     rmdir(strcat(patFolder, "/", dayAndHour, "/tmp_", pm, "/"))
+%                                 end
+%                              end
+%                             end
+%                          end
                     end
 
                     if isfield(info, keyField) 
@@ -302,10 +315,13 @@ function [information, informationValues] = getDICOMinfo(mainFolder, field, patF
                                     informationValues.PERFUSIONCT5.ContentTime = info.ContentTime;
                                     informationValues.PERFUSIONCT5.ColorType = info.ColorType;
                                     informationValues.PERFUSIONCT5.AcquisitionDate = info.AcquisitionDate;
+                                    informationValues.PERFUSIONCT5.PixelSpacing = info.PixelSpacing;
     
                                     % optional information field 
                                     optfields = ["SeriesDescription", "StudyDescription", "KVP", "XrayTubeCurrent", ...
-                                        "ExposureTime", "Exposure", "FilterType", "GeneratorPower"];
+                                        "ExposureTime", "Exposure", "FilterType", "GeneratorPower", "PixelSpacing", ...
+                                        "ImagePositionPatient", "ImageOrientationPatient", "PatientPosition", ...
+                                        "RotationDirection"];
                                     for f = 1:numel(optfields)
                                         current_field = optfields(f);
                                         if isfield(info, current_field)
@@ -361,40 +377,88 @@ function [information, informationValues] = getDICOMinfo(mainFolder, field, patF
                                     informationValues.MRI.Modality = info.Modality;
                                 end
                                 
-%                                 if isfield(info,'DiffusionBValue')
-%                                     disp("DiffusionBValue");
-%                                     disp(info.DiffusionBValue);
-%                                 end
-%                                 
-%                                 if isfield(info,'Private_2001_1001')
-%                                     disp("Private_2001_1001");
-%                                     disp(info.Private_2001_1001);
-%                                 end
-%                                 
-%                                 if isfield(info,'Private_0019_100c')
-%                                     if info.Private_0019_100c>0
-%                                         disp("Private_0019_100c");
-%                                     end
-%                                 end
-                                
                                 informationValues.MRI.StudyDescription = info.StudyDescription;
 
                                 if isfield(info, 'SeriesDescription')
+                                    if ~isempty(info.SeriesDescription)
+                                        process = false;
                                     if contains(info.SeriesDescription, "isoReg")
                                         information.MRIISOREGFolder = "X";
-
                                         informationValues.MRI.filenameISOREG = dicomFile.folder;
-                                        informationValues.MRI.SeriesDescriptionISOREG = info.SeriesDescription;                                                                                
+                                        informationValues.MRI.SeriesDescriptionISOREG = info.SeriesDescription;   
+                                        process = true;
+                                    elseif contains(info.SeriesDescription, "isodReg")
+                                        information.MRIISODREGFolder = "X";
+                                        informationValues.MRI.filenameISODREG = dicomFile.folder;
+                                        informationValues.MRI.SeriesDescriptionISODREG = info.SeriesDescription;
+                                        process = true;
+                                    elseif contains(info.SeriesDescription, "ep2d_diff_4scan_trace_p3_TRACEW")
+                                        information.MRIEP2DFolder = "X";
+                                        informationValues.MRI.filenameEP2D = dicomFile.folder;
+                                        informationValues.MRI.SeriesDescriptionEP2D = info.SeriesDescription;
+                                        process = true;
+                                    elseif contains(info.SeriesDescription, "Ax DWI")
+                                        information.MRIAxDWIFolder = "X";
+                                        informationValues.MRI.filenameAxDWI = dicomFile.folder;
+                                        informationValues.MRI.SeriesDescriptionAxDWI = info.SeriesDescription;
+                                        process = true;
                                     elseif contains(info.SeriesDescription, "dADC")
                                         information.MRIdADCFolder = "X";
-
                                         informationValues.MRI.filenameDADC = dicomFile.folder;
                                         informationValues.MRI.SeriesDescriptionDADC = info.SeriesDescription;
+                                        process = true;
                                     elseif contains(info.SeriesDescription, "T2*")
                                         information.MRIT2starFolder = "X";
-
                                         informationValues.MRI.filenameT2star = dicomFile.folder;
                                         informationValues.MRI.SeriesDescriptionT2star = info.SeriesDescription;
+                                        process = true;
+                                    end
+                                    
+                                    if process
+
+                                    if isfield(info,'SliceThickness')
+                                        informationValues.MRI.SliceThickness = strcat(informationValues.MRI.SliceThickness, "-",convertCharsToStrings(int2str(info.SliceThickness)));
+                                    end
+                                    
+%                                     % check if they have a date (in the folder description) and extract it if necessary
+%                                     dayAndHour = "no_date";
+%                                     if isfield(info, 'StudyDate')
+%                                     if ~isempty(info.StudyDate)
+%                                         dayAndHour = info.StudyDate;
+%                                     end
+%                                     end
+%                                     
+%                                     fieldPMname = "f_"+replace(convertCharsToStrings(dayAndHour),["-","(",")"," ", "*"],["","","","", ""]);
+%                                     seriesDescription = replace(convertCharsToStrings(info.SeriesDescription),"*","");
+%                                     timefolder = "no_time";
+%                                     if isfield(info, 'AcquisitionTime')
+%                                     if ~isempty(info.AcquisitionTime)
+%                                         timefolder = info.AcquisitionTime;
+%                                     end
+%                                     end
+%                                     seriesDescription = strcat(seriesDescription, " - ", timefolder);
+%                                     % create the folders
+%                                     mkdir(strcat(patDWIFolder, "/", dayAndHour));
+%                                     mkdir(strcat(patDWIFolder, "/", dayAndHour, "/", seriesDescription));
+%                                     
+%                                     for el = dir(dicomFile.folder)'
+%                                         if ~strcmp(el.name, '.') && ~strcmp(el.name, '..') && ~contains(el.name, '._')  
+%                                             info = dicominfo(fullfile(dicomFile.folder, el.name));
+%                                             image = dicomread(fullfile(dicomFile.folder, el.name));
+%                                             if ~isempty(image)
+%                                             imgidx = num2str(info.InstanceNumber);
+%                                             if info.InstanceNumber<10
+%                                                 if info.InstanceNumber == 0
+%                                                     flagStartZero = 1;
+%                                                 end
+%                                                 imgidx = strcat("0", num2str(info.InstanceNumber));
+%                                             end
+% 
+%                                             imwrite(mat2gray(image), strcat(patDWIFolder, "/", dayAndHour, "/", seriesDescription, "/", imgidx, ".png"));  
+%                                             end
+%                                         end
+%                                     end
+                                    end
                                     end
                                 end
                             end   

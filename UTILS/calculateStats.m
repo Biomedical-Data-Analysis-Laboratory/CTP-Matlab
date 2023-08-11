@@ -39,9 +39,11 @@ stats = movevars(stats, 'name', 'Before', 'tn_p');
 %% Accuracy
 stats.accuracy_p = (stats.tn_p + stats.tp_p)./(stats.tn_p + stats.fn_p + stats.fp_p + stats.tp_p +1e-07);
 stats.accuracy_c = (stats.tn_c + stats.tp_c)./(stats.tn_c + stats.fn_c + stats.fp_c + stats.tp_c +1e-07);
+stats.accuracy_pc = (stats.tn_p + stats.tp_p + stats.tn_c + stats.tp_c)./(stats.tn_p + stats.fn_p + stats.fp_p + stats.tp_p + stats.tn_c + stats.fn_c + stats.fp_c + stats.tp_c + 1e-07);
 stats.accuracy_b = (stats.tn_b + stats.tp_b)./(stats.tn_b + stats.fn_b + stats.fp_b + stats.tp_b +1e-07);
 stats.accuracy_p_nb = (stats.tn_p_nb + stats.tp_p_nb)./(stats.tn_p_nb + stats.fn_p_nb + stats.fp_p_nb + stats.tp_p_nb +1e-07);
 stats.accuracy_c_nb = (stats.tn_c_nb + stats.tp_c_nb)./(stats.tn_c_nb + stats.fn_c_nb + stats.fp_c_nb + stats.tp_c_nb +1e-07);
+stats.accuracy_pc_nb = (stats.tn_p_nb + stats.tp_p_nb + stats.tn_c_nb + stats.tp_c_nb)./(stats.tn_p_nb + stats.fn_p_nb + stats.fp_p_nb + stats.tp_p_nb + stats.tn_c_nb + stats.fn_c_nb + stats.fp_c_nb + stats.tp_c_nb +1e-07);
 stats.accuracy_b_nb = (stats.tn_b_nb + stats.tp_b_nb)./(stats.tn_b_nb + stats.fn_b_nb + stats.fp_b_nb + stats.tp_b_nb +1e-07);
 
 %% Precision

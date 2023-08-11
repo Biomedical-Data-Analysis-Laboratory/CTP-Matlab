@@ -13,9 +13,13 @@ end
 
 %% get the NIHSS from file
 if ispc % windows
-    T = readtable('D:\Preprocessed-SUS2020_v2\NIHSS-score.csv', 'HeaderLines',1);
-elseif isunix % unix sistem (gorina)
-    T = readtable('/home/student/lucat/Matlab/Workspace_thresholdingMethods/NIHSS-score.csv', 'HeaderLines',1);
+    T = readtable('D:\Preprocessed-SUS2020_v2\nihss_score.csv', 'HeaderLines',1);
+elseif isunix % unix sistem (gorina) or mac
+    if ismac
+        T = readtable("/Users/lucatomasetti/OneDrive - Universitetet i Stavanger/Luca/PhD/MATLAB_CODE/Workspace//NIHSS-score.csv", 'HeaderLines',1);
+    else
+        T = readtable('/home/student/lucat/Matlab/Workspace_thresholdingMethods_REVIEW/NIHSS-score.csv', 'HeaderLines',1);
+    end
 end
 patient_row = strcmp(T{:,1},patient);
 NIHSS = T{patient_row,2}; % get the NIHSS at admission, use 3 if you want the NIHSS at dismission

@@ -100,12 +100,7 @@ for t=1:nImages
                 end
                 
                 regions_params(ri).mask = mask;
-                
-                %% TODO: check this part... it does NOT seems correct to do this
-%                 mask = bwconvhull(mask, 'objects');
-%                 bw = activecontour(imageToUse, mask, 400, 'edge');
-%                 regions_params(ri).mask = bw; % set the mask to the correct region
-                
+                                
                 if SHOW_IMAGES
                     contour(bw, 1,region.color, 'LineWidth', 1); 
                 end

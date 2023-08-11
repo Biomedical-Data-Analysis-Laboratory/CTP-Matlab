@@ -1,16 +1,14 @@
-function [brain,brain_mask] = testRemoveSkull(Im, tmp_mask, image)
+function [brain,brain_mask,thres_hu] = testRemoveSkull(Im, tmp_mask, image, thres_hu)
 %TESTREVOMESKELL Summary of this function goes here
 %   Detailed explanation goes here
 
-thres_hu = 160; % +300 == bones
-
-if image==1 % if it's the first image, generate the mask, otherwise use the already generated 
-    
+if image==1 % if it's the first image, generate the mask, otherwise use the already generated     
     Im(Im<0) = 0; % remove any pixel values < 0 HU
+    tmp_im = Im; % don't change the image
     while thres_hu > 80
-        Im(Im>thres_hu) = 0; % remove any pixel values < 100 HU
+        tmp_im(Im>thres_hu) = 0; % remove any pixel values < 100 HU
     
-        mask = Im>0;
+        mask = tmp_im>0;
         if sum(mask,'all')==0 % if everything is black
             brain_mask = mask;
             break
@@ -32,21 +30,24 @@ if image==1 % if it's the first image, generate the mask, otherwise use the alre
             break
         end
         
-        disp(cf);
-        disp(Bcf/cf);
         thres_hu = thres_hu - 5;
     end
     
-    figure,imshow(brain_mask,[]);
+    if ~isunix
+        figure,imshow(brain_mask,[]);
+    end
     
 else
+    Im(Im<0) = 0;
+    %% NO! Don't alterate the pixels in the image
+    % Im(Im>thres_hu) = thres_hu; 
     brain_mask = tmp_mask;
 end
 
 if sum(brain_mask,'all')==0 % if everything is black
-    brain = int16(brain_mask);
+    brain = double(brain_mask);
 else
-    brain = Im.*int16(brain_mask);
+    brain = double(Im).*double(brain_mask);
 end
 
 end

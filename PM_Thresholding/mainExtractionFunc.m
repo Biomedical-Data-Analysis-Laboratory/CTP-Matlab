@@ -34,7 +34,7 @@ flag_PENUMBRACORE = constants.flag_PENUMBRACORE; % to run also the penumbra-core
 DIFFERENT_PERCENTAGES = constants.DIFFERENT_PERCENTAGES; % use only for the ROC curve
 SUPERVISED_LEARNING = constants.SUPERVISED_LEARNING; % flag for the supervised learning (with or without the ground truth)
 CALCULATE_STATS_ONLY = constants.CALCULATE_STATS_ONLY; % flag to calculate only the stats of the prediction (if they are already saved!)
-FAKE_MIP = constants.FAKE_MIP; % use to just ignore the old infarction presented in the MIP (maximum intensity projection) images
+FAKE_MTT = constants.FAKE_MTT; % use to just ignore the old infarction presented in the MTT images
 TIFF_SUFFIX = constants.TIFF_SUFFIX; % use the .tiff suffix in the images
 SUFFIX_RES = constants.SUFFIX_RES; % 'SVM' // 'tree' // 'SVM_tree' 
 USE_UNIQUE_MODEL = constants.USE_UNIQUE_MODEL; % for creating a unque model and not passing through a cross-validation over the patiens
@@ -44,6 +44,8 @@ USESUPERPIXELS = constants.USESUPERPIXELS;
 N_SUPERPIXELS = constants.N_SUPERPIXELS;
 SMOTE = constants.SMOTE;
 STEPS = constants.STEPS;
+USEHYPERPARAMETERS = constants.USEHYPERPARAMETERS;
+HYPERPARAMETERS = constants.HYPERPARAMETERS;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % add the n_superpixels at the end, even if the superpixels flag is false
@@ -63,7 +65,8 @@ if SMOTE
     prefixForTable = prefixForTable+"SMOTE_";
 end
 
-disp(prefixForTable);
+disp("*** mainExtractionFunc function ***");
+disp(strcat(workspaceFolder,prefixForTable));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% initialize variables 
@@ -104,9 +107,10 @@ for suff = researchesValues.keys
     tic
     %% Load the right model(s) if they are already saved.
     if USE_UNIQUE_MODEL && isfield(research, "cluster") && strcmp(research.cluster, "yes") && ...
-        ((STEPS>1 && exist(strcat(SAVED_MODELS_FOLDER,"MODELS_PENUMBRA_",suffix,"_ALL.mat"),'file')==2 && ...
+        ((STEPS>1 && exist(strcat(SAVED_MODELS_FOLDER,"MODELS_PENUMBRA_",suffix,"_ALL.mat"),'file')==2 || ...
         exist(strcat(SAVED_MODELS_FOLDER,"MODELS_CORE_",suffix,"_ALL.mat"),'file')==2) || ...
         (STEPS==1 && exist(strcat(SAVED_MODELS_FOLDER,"MODELS_UNIQUE_",suffix,"_ALL.mat"),'file')==2))
+        disp("--Loading the right model(s)");
         for step=1:STEPS
             if step==1
                 if STEPS == 1 %% unique classifier model 
@@ -115,14 +119,22 @@ for suff = researchesValues.keys
                     if strcmp(SUFFIX_RES,'SVM_tree')
                         load(strcat(SAVED_MODELS_FOLDER,"MODELS_PENUMBRA_",int2str(STEPS),"steps_SVM_ALL.mat"),"Mdl");
                     else
-                        load(strcat(SAVED_MODELS_FOLDER,"MODELS_PENUMBRA_",suffix,"_ALL.mat"),"Mdl");
+                        if exist(strcat(SAVED_MODELS_FOLDER,"MODELS_PENUMBRA_",suffix,"_ALL.mat"),'file')==2
+                            load(strcat(SAVED_MODELS_FOLDER,"MODELS_PENUMBRA_",suffix,"_ALL.mat"),"Mdl");
+                        else 
+                            Mdl = {};
+                        end
                     end
                 end
             elseif step==STEPS
                 if strcmp(SUFFIX_RES,'SVM_tree')
                     load(strcat(SAVED_MODELS_FOLDER,"MODELS_CORE_",int2str(STEPS),"steps_tree_ALL.mat"),"Mdl");
                 else
-                    load(strcat(SAVED_MODELS_FOLDER,"MODELS_CORE_",suffix,"_ALL.mat"),"Mdl");
+                    if exist(strcat(SAVED_MODELS_FOLDER,"MODELS_CORE_",suffix,"_ALL.mat"),'file')==2
+                        load(strcat(SAVED_MODELS_FOLDER,"MODELS_CORE_",suffix,"_ALL.mat"),"Mdl");
+                    else 
+                        Mdl = {};
+                    end
                 end
             end
             
@@ -138,7 +150,7 @@ for suff = researchesValues.keys
     if ~LOAD_AND_PREDICT_PATIENT && exist(strcat(workspaceFolder,prefixForTable,"totalTableData.mat"),'file')==2 && ...
             exist(strcat(workspaceFolder,prefixForTable,"totalNImages.mat"),'file')==2 && ...
             exist(strcat(workspaceFolder,prefixForTable,"predictionMasks.mat"),'file')==2 
-        
+        disp("--Loading the complete dataset table");
         load(strcat(workspaceFolder,prefixForTable,"totalTableData.mat"),"totalTableData");
         load(strcat(workspaceFolder,prefixForTable,"totalNImages.mat"),"totalNImages");
         load(strcat(workspaceFolder,prefixForTable,"predictionMasks.mat"),"predictionMasks");
@@ -176,7 +188,7 @@ for suff = researchesValues.keys
         if ~strcmp(dayFold.name, '.') && ~strcmp(dayFold.name, '..') 
         n_fold = n_fold + 1;
         
-        disp(strcat("Patient: ", patient, " - ", dayFold.name));
+        disp(strcat("Patient: ", patient, " - ", dayFold.name, " -- ", num2str(p), "/", num2str(numel(patients))));
         
         % count the subfolders inside the dayFold, sutracting the
         %       "Annotations" and "Original" folders from the count and if the
@@ -199,6 +211,9 @@ for suff = researchesValues.keys
         %% for each subfolder of parametric maps   
         for s=1:numel(subfolds)
             subfold = subfolds(s);
+            if FAKE_MTT && strcmp(subfold,"MTT")
+                continue
+            end
             intermediateFold = '/';
             if ~PARAMETRIC_IMAGES_TO_ANALYZE
                 intermediateFold = '/ST000000/';
@@ -209,7 +224,7 @@ for suff = researchesValues.keys
             if s==1
                 number_of_slice_per_pm = n; % set it for later comparison
             else
-                if number_of_slice_per_pm~=n
+                if number_of_slice_per_pm~=n && ~strcmp(subfold,"MTT")
                     disp("number of slices not equal in the PM: " + folderPath);
                     break
                 end
@@ -217,9 +232,24 @@ for suff = researchesValues.keys
 
             savedAnnotationFolderPath = strcat(perfusionCTFolder,patient,'/',dayFold.name,intermediateFold,subsavefolder{2});
             saved_n = numel(dir(savedAnnotationFolderPath))-2;
+            % if the folder does not exist, not necessary to go and predict
+            if ~isfolder(savedAnnotationFolderPath)
+                saved_n = n*2;
+            end
+            
+            count_pred = 0;
+            if ~RUN_EXTRACTION_AGAIN
+                filenames = struct2cell(dir(strcat(saveFolder,patient,'/',dayFold.name,intermediateFold,subsavefolder{1})));
+                
+                for x = 1:size(filenames,2)
+                    if strfind(filenames{1,x},suffix)
+                        count_pred = count_pred+1;
+                    end
+                end
+            end
 
              % nothing already saved in the original folder or the RUN_EXTRACTION_AGAIN is set == true
-            if (saved_n/2) < n || RUN_EXTRACTION_AGAIN
+            if ((saved_n/2) < n || RUN_EXTRACTION_AGAIN) || ((count_pred/2)~=n && ~RUN_EXTRACTION_AGAIN)
                 %% initialize the cells if we are checking the grayscale image 
                 if subfold == subfolds(1)
                     tryImage = cell(1,n); % initialize the ground truth cell
@@ -246,7 +276,7 @@ for suff = researchesValues.keys
                 [combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks,penumbraImage,...
                 totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,imageMTT,stats,tableData,nImages] = ...
                     getInfoFromSubfold(subfold,subfolds,PARAMETRIC_IMAGES_TO_ANALYZE,research,folderPath,patient,n_fold,...
-                    MANUAL_ANNOTATION_FOLDER,saveFolder,colorbarPointY,parametricMaps,SUPERVISED_LEARNING,FAKE_MIP,...
+                    MANUAL_ANNOTATION_FOLDER,saveFolder,colorbarPointY,parametricMaps,SUPERVISED_LEARNING,FAKE_MTT,...
                     suffix,colorbarPointBottomX,colorbarPointTopX,penumbra_color,core_color,flag_PENUMBRACORE,SAVE_PAR_MAPS,count,perce, ...
                     combinedResearchCoreMaks,combinedResearchPenumbraMaks,tryImage,groundTruthImage,coreImage,sortImages,skullMasks, ...
                     penumbraImage,totalCoreMask,totalPenumbraMask,imageCBV,imageCBF,imageTTP,imageTMAX,imageMTT,stats,dayFold.name,...
@@ -488,6 +518,8 @@ for suff = researchesValues.keys
         if appUIFIGURE~=0
             wb.Value = 0.5;
             wb.Message = "Predicting patient(s)...";
+        else
+            disp("--Predicting patient(s)...");
         end
                 
         %% for each patient
@@ -500,6 +532,8 @@ for suff = researchesValues.keys
                 % progress bar update
                 wb.Value = ((p/numel(patients))/2) + 0.5;
                 wb.Message = strcat("Predicting patient ", num2str(p), "/", num2str(numel(patients)), "...");
+            else
+                disp(strcat("--Predicting patient ", num2str(p), "/", num2str(numel(patients)), "..."));
             end
 
             for dayFold = dir(strcat(perfusionCTFolder, patient))'
@@ -525,7 +559,6 @@ for suff = researchesValues.keys
                     end
 
                     if continue_pred==0
-                        
                         continue
                     end
 
@@ -537,8 +570,8 @@ for suff = researchesValues.keys
                     end 
 
                     if SUPERVISED_LEARNING 
-                        if (STEPS > 1 && exist(strcat(SAVED_MODELS_FOLDER,"MODELS_PENUMBRA_",suffix,"_",p_string,".mat"),'file')==0 && ...
-                            exist(strcat(SAVED_MODELS_FOLDER,"MODELS_CORE_",suffix,p_string,".mat"),'file')==0) || ...
+                        if (STEPS > 1 && (exist(strcat(SAVED_MODELS_FOLDER,"MODELS_PENUMBRA_",suffix,"_",p_string,".mat"),'file')==0 || ...
+                            exist(strcat(SAVED_MODELS_FOLDER,"MODELS_CORE_",suffix,p_string,".mat"),'file')==0)) || ...
                             (STEPS == 1 && exist(strcat(SAVED_MODELS_FOLDER,"MODELS_UNIQUE_",suffix,"_",p_string,".mat"),'file')==0)
                             PREDICT = true;
                             isSUPERVISED_learn = SUPERVISED_LEARNING;
@@ -550,7 +583,7 @@ for suff = researchesValues.keys
                             %% set the model and (maybe) predict
                             statsClassific = setModelAndPredict(SAVED_MODELS_FOLDER,SUFFIX_RES,pIndex_use,p,STEPS,totalTableData,totalNImages,...
                                 penumbra_color,core_color,isSUPERVISED_learn,statsClassific,patientSubFold,saveFolder,subsavefolder,suffix,...
-                                predictionMasks,MANUAL_ANNOTATION_FOLDER,PREDICT,SHOW_IMAGES,image_suffix,USESUPERPIXELS);
+                                predictionMasks,MANUAL_ANNOTATION_FOLDER,PREDICT,SHOW_IMAGES,image_suffix,USESUPERPIXELS,USEHYPERPARAMETERS, HYPERPARAMETERS);
                         else % if the model exists
                             if CALCULATE_STATS_ONLY
                                 new_suffix = strcat(suffix, "_", pIndex);

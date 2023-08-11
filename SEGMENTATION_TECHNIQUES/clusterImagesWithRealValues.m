@@ -1,6 +1,6 @@
 function [tableData,nImages] = clusterImagesWithRealValues(skullMasks, sortImages, ...
     colorbarPointBottomX, colorbarPointTopX, colorbarPointY, MANUAL_ANNOTATION_FOLDER, ...
-    SUPERVISED_LEARNING, FAKE_MIP, patient, n_fold, image_suffix, suffix, USESUPERPIXELS,N_SUPERPIXELS)
+    SUPERVISED_LEARNING, FAKE_MTT, patient, n_fold, image_suffix, suffix, USESUPERPIXELS,N_SUPERPIXELS)
 %CONVERTIMAGESTOGRAYSCALE Summary of this function goes hereI
 %   Detailed explanation goes here
 
@@ -10,7 +10,7 @@ realValueImages = cell(size(sortImages));
 realMaxValues = [100, 6, 20, 12];
 
 %% if at least one of the parametric maps have an empty slice (or less slices than the others), don't extract data
-if sum(cellfun(@isempty, sortImages),'all')>0
+if sum(cellfun(@isempty, sortImages(1:5,:)),'all')>0
     tableData = [];
     nImages = [];
     return
@@ -46,9 +46,9 @@ for pm_idx = 1:size(sortImages,1) % from 1 to 5
                     end
                 end
             end
-        else % we are working with the MIP image
-            if FAKE_MIP
-                realValueImages{pm_idx,x} = ones(size(rgb2gray(imWithColorbar)));
+        else % we are working with the MTT image
+            if FAKE_MTT
+                realValueImages{pm_idx,x} = zeros(size(imWithColorbar,1), size(imWithColorbar,2));
             else
                 %% 110 is a chosen value! (TODO: it could be improved)
                 oldInfactionMask = rgb2gray(imWithColorbar)>110; 

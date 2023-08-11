@@ -1,8 +1,11 @@
 function [ImageRegistered,info] = extractNIfTIImagesISLES2018(directory, SAVE, workspaceFolder, suffix_workspace, ...
-    subname, SAVE_IMAGES, save_folder, groundTruth_folder, justinfo, SAVE_AS_TIFF, BINARY_GT)
+    subname, SAVE_IMAGES, save_folder, groundTruth_folder, justinfo, SAVE_AS_TIFF, BINARY_GT, overrideJump)
 %EXTRACTNIFTIIMAGES Summary of this function goes here
 %   Detailed explanation goes here
     
+    if nargin<12
+        overrideJump = false;
+    end
     if nargin < 11
         BINARY_GT = false;
     end
@@ -39,6 +42,8 @@ function [ImageRegistered,info] = extractNIfTIImagesISLES2018(directory, SAVE, w
         suffixsave = ".tiff";
     end
     
+    save_prefix = '01_Extract.';
+    
     for elem=1:numel(mappingFile{1,1})
         suffix_folder = strcat(mappingFile{1,2}{elem},"_", num2str(mappingFile{1,3}(elem)));
         id_pat = mappingFile{1,3}(elem); % IN ORDER NOT TO COMPACT THEM TOGETHER
@@ -48,6 +53,13 @@ function [ImageRegistered,info] = extractNIfTIImagesISLES2018(directory, SAVE, w
         name = num2str(id_pat);
         if length(name) == 1
             name = strcat('0', name);
+        end
+        
+        fname = workspaceFolder + convertCharsToStrings(save_prefix) + name + suffix_workspace + ".mat";
+        if exist(fname, 'file')==2 && ~overrideJump
+            load(fname);
+            ImageRegistered{id_pat} = patImage;
+            continue
         end
         
         if SAVE_IMAGES && ~strcmp(save_folder, "") && ~isfolder(strcat(save_folder,"/PA",name))
@@ -99,11 +111,11 @@ function [ImageRegistered,info] = extractNIfTIImagesISLES2018(directory, SAVE, w
                         for k=1:n_slices
                             ImageRegistered{id_pat}{k} = cell(1,count);
                             for i=1:count
-                                %% take the correct image based on the dimension and resize it to 512x512 
+                                %% take the correct image based on the dimension 
                                 if size(infor.ImageSize,2)>3
-                                    ImageRegistered{id_pat}{k}{i} = imresize(int16(V(:,:,k,i)),[512,512]);
+                                    ImageRegistered{id_pat}{k}{i} = V(:,:,k,i); %imresize(int16(V(:,:,k,i)),[512,512]);
                                 else
-                                    ImageRegistered{id_pat}{k}{i} = imresize(int16(V(:,:,i)),[512,512]);
+                                    ImageRegistered{id_pat}{k}{i} = V(:,:,i); %imresize(int16(V(:,:,i)),[512,512]);
                                 end
 
                                 %% save the images
@@ -143,6 +155,12 @@ function [ImageRegistered,info] = extractNIfTIImagesISLES2018(directory, SAVE, w
                                 end
                             end
                         end
+                        
+                        if SAVE
+                            patImage = ImageRegistered{id_pat};
+                            save(fname,'patImage','-v7.3')
+                        end
+                        
                     end
                 end
             end
@@ -151,7 +169,7 @@ function [ImageRegistered,info] = extractNIfTIImagesISLES2018(directory, SAVE, w
     end
     
     if SAVE
-        save(strcat(workspaceFolder, 'Image', suffix_workspace, '_', subname, '.mat'),'ImageRegistered','-v7.3')
+        % save(strcat(workspaceFolder, 'Image', suffix_workspace, '_', subname, '.mat'),'ImageRegistered','-v7.3')
         save(strcat(workspaceFolder, 'slice_array', suffix_workspace, '_', subname, '.mat'),'slice_array','-v7.3')
         if justinfo
             save(strcat(workspaceFolder, 'info', suffix_workspace, '_', subname, '.mat'),'info','-v7.3')

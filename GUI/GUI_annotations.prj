@@ -1,9 +1,9 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="2885506559" file="C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\GUI\GUI_annotations.prj" location="C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\GUI" name="GUI_annotations" target="target.mlapps" target-name="Package App">
+  <configuration build-checksum="3357128572" file="C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\GUI\GUI_annotations.prj" location="C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\GUI" name="GUI_annotations" target="target.mlapps" target-name="Package App">
     <param.appname>GUI_annotations</param.appname>
     <param.authnamewatermark>Luca Tomasetti</param.authnamewatermark>
     <param.email>luca.tomasetti@uis.no</param.email>
-    <param.company>University of Stavanger (UiS)</param.company>
+    <param.company>UiS (University of Stavanger)</param.company>
     <param.icon>${PROJECT_ROOT}\GUI_annotations_resources\icon_24.png</param.icon>
     <param.icons>
       <file>${PROJECT_ROOT}\GUI_annotations_resources\icon_48.png</file>
@@ -12,8 +12,8 @@
     </param.icons>
     <param.summary />
     <param.description>A GUI application to predict and to annotate parametric color-coded maps from DICOM format images.</param.description>
-    <param.screenshot>C:\Users\2921329\AppData\Local\Temp\tp509509ad_16af_40f5_88f7_ed0fa0b5d8a2.png</param.screenshot>
-    <param.version>1.5.3</param.version>
+    <param.screenshot>C:\Users\Luca\AppData\Local\Temp\tp4a75451e_5a18_49cb_a431_714f232b610f.png</param.screenshot>
+    <param.version>2.5.2</param.version>
     <param.products.name />
     <param.products.id />
     <param.products.version />
@@ -38,28 +38,31 @@
       <file>${PROJECT_ROOT}\finalizeParametricMaps.m</file>
       <file>${PROJECT_ROOT}\generateParametricMaps.m</file>
       <file>${PROJECT_ROOT}\prepareDataForExtract.m</file>
-      <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\INFO (new patients)\getDICOMinfo.m</file>
-      <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\INFO (new patients)\getMAINinfo.m</file>
-      <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\PM_Thresholding\getInfoFromSubfold.m</file>
-      <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\PM_Thresholding\mainExtractionFunc.m</file>
-      <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\PM_Thresholding\saveThresholdingImages.m</file>
-      <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\PM_Thresholding\setModelAndPredict.m</file>
-      <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\SEGMENTATION_TECHNIQUES\classificationApproach.m</file>
-      <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\SEGMENTATION_TECHNIQUES\clusterImagesWithRealValues.m</file>
-      <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\SEGMENTATION_TECHNIQUES\predictFromModel.m</file>
-      <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\SEGMENTATION_TECHNIQUES\predictWithUnsupervisedLearning.m</file>
-      <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\SEGMENTATION_TECHNIQUES\segmentWithKMeanClustering.m</file>
-      <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\SEGMENTATION_TECHNIQUES\statisticalInfo.m</file>
-      <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\UTILS\C2xyz_v2\C2xyz.m</file>
-      <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\UTILS\contour2shape.m</file>
-      <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\UTILS\getIndexFromPatient.m</file>
-      <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\UTILS\interppolygon.m</file>
-      <file>C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\UTILS\meanSuperpixelsImage.m</file>
+      <file>C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\INFO (new patients)\getDICOMinfo.m</file>
+      <file>C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\INFO (new patients)\getMAINinfo.m</file>
+      <file>C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\PM_Thresholding\getInfoFromSubfold.m</file>
+      <file>C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\PM_Thresholding\mainExtractionFunc.m</file>
+      <file>C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\PM_Thresholding\saveThresholdingImages.m</file>
+      <file>C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\PM_Thresholding\setModelAndPredict.m</file>
+      <file>C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\SEGMENTATION_TECHNIQUES\classificationApproach.m</file>
+      <file>C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\SEGMENTATION_TECHNIQUES\clusterImagesWithRealValues.m</file>
+      <file>C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\SEGMENTATION_TECHNIQUES\predictFromModel.m</file>
+      <file>C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\SEGMENTATION_TECHNIQUES\predictWithUnsupervisedLearning.m</file>
+      <file>C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\SEGMENTATION_TECHNIQUES\segmentWithKMeanClustering.m</file>
+      <file>C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\UTILS\C2xyz_v2\C2xyz.m</file>
+      <file>C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\UTILS\contour2shape.m</file>
+      <file>C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\UTILS\getConfusionMatrix.m</file>
+      <file>C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\UTILS\getIndexFromPatient.m</file>
+      <file>C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\UTILS\getSeverityAndNIHSSfromPatient.m</file>
+      <file>C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\UTILS\interppolygon.m</file>
+      <file>C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\UTILS\meanSuperpixelsImage.m</file>
+      <file>C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\UTILS\smote\smote.m</file>
+      <file>C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\UTILS\statisticalInfo.m</file>
     </fileset.depfun>
     <fileset.resources />
     <fileset.package />
     <build-deliverables>
-      <file location="C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY" name="GUI" optional="false">C:\Users\2921329\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\GUI</file>
+      <file location="C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY" name="GUI" optional="false">C:\Users\Luca\OneDrive - Universitetet i Stavanger\Luca\PhD\MATLAB_CODE\REPOSITORY\GUI</file>
     </build-deliverables>
     <workflow />
     <matlab>

@@ -1,6 +1,7 @@
 function generateParametricMaps(app)
-%GENERATEPARAMETRICMAPS Summary of this function goes here
-%   Detailed explanation goes here
+%GENERATEPARAMETRICMAPS Extract the PMs from the DICOM folders
+%   Get the PMs and other info from the DICOM folder (applies to the new
+%   dataset)
 
 if isstring(app.rawdatapath)
     app.rawdatapath = convertStringsToChars(app.rawdatapath);
@@ -17,8 +18,12 @@ if isstring(app.patientspath)
 end
 rawDataFolder = app.patientspath;
 
+if isstring(app.patientsDWIpath)
+    app.patientsDWIpath = convertStringsToChars(app.patientsDWIpath);
+end
+DWIDataFolder = app.patientsDWIpath;
 %% main function
-getMAINinfo(patientsFolder,rawDataFolder,workspaceFolder,app.GUIAutomaticManualAnnotationsUIFigure)
+getMAINinfo(patientsFolder,rawDataFolder,DWIDataFolder,workspaceFolder,app.GUIAutomaticManualAnnotationsUIFigure)
 
 end
 

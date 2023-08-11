@@ -25,7 +25,7 @@ MANUAL_ANNOTATION_FOLDER = "";
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% other important variables
 totPats = numel(dir(saveFolder))-2;
-subfolds = ["MIP", "CBF", "CBV", "TMAX", "TTP"]; 
+subfolds = ["MIP", "MTT", "CBF", "CBV", "TMAX", "TTP"]; 
 subsavefolder = ["Annotations/", "Original/"];
 previousNumPatiens = 0; % 11;
 
@@ -39,7 +39,7 @@ end
 patients = []; 
 count_idx = 1;
 for p=dir(saveFolder)'
-    if ~strcmp(p.name, '.') && ~strcmp(p.name, '..')
+    if ~strcmp(p.name, '.') && ~strcmp(p.name, '..') && ~strcmp(p.name, '.DS_Store')
         if sum(patient_index==count_idx)>0
             patients = [patients; convertCharsToStrings(p.name)];
         end
@@ -58,10 +58,17 @@ constants.SAVE_TRESHOLDING = 0; % flag to save the thresholding values
 constants.flag_PENUMBRACORE = 1; % to run also the penumbra-core statistics
 constants.DIFFERENT_PERCENTAGES = 0; % use only for the ROC curve
 constants.SUPERVISED_LEARNING = 0; % flag for the supervised learning (with or without the ground truth)
-constants.FAKE_MIP = 0; % use to just ignore the old infarction presented in the MIP (maximum intensity projection) images
+constants.FAKE_MTT = 1; % use to just ignore the old infarction presented in the MTT images
 constants.SUFFIX_RES = 'tree'; % 'SVM' // 'tree' // 'SVM_tree' 
 constants.USE_UNIQUE_MODEL = true; % for creating a unque model and not passing through a cross-validation over the patiens
-
+constants.CALCULATE_STATS_ONLY = false;
+constants.TIFF_SUFFIX = false;
+constants.THRESHOLDING = false;
+constants.KEEPALLPENUMBRA = false;
+constants.USESUPERPIXELS = true;
+constants.N_SUPERPIXELS = 25;
+constants.SMOTE = 0;
+constants.STEPS = 1;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% values for each parametric map [perc(%), up/down, core/penumbra]
 researchesValues = containers.Map;
